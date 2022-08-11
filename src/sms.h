@@ -1,0 +1,13 @@
+#ifndef SMS_H_
+#define SMS_H_
+
+#define STUDENT_PORTAL 0b00000001
+#define TEACHER_PORTAL 0b00000010
+#define ADMIN_PORTAL 0b00000011
+#define ABOUT 0b00000100
+#define EXIT_PROGRAM 0b00000101
+
+#define CLEAR_SCREEN write(STDOUT_FILENO, "\x1b[2J", 4);
+#define RESET_CURSOR write(STDOUT_FILENO, "\x1b[H", 3);
+
+#endif
