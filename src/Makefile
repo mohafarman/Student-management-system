@@ -4,4 +4,4 @@ OPTIONS=-Wall -Wextra -pedantic -std=c99
 COMPILE=$(COMPILER) $(OPTIONS)
 
 PROGRAM: sms.c
-	$(COMPILE) sms.c -o sms
+	$(COMPILE) sms.c -o sms.out
