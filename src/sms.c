@@ -22,7 +22,7 @@ static int DatabaseCallbackTableCreate(void *NotUsed, int argc, char **argv, cha
 
 char username[32];
 char password[32];
-int credentials = 0;
+bool credentials = false;
 char privilege[10];
 
 int main() {
@@ -84,7 +84,7 @@ void HeaderText(char* str, bool about) {
 
 void CheckCredentials() {
 	sqlite3 *db;
-	char *query;
+	char query[255];
 	int resultDb;
 	int result;
 	char *errorMsg;
@@ -107,11 +107,14 @@ void CheckCredentials() {
 		}
 		printf("\t\tUsername: ");
 		scanf("%s", username);
+		flush();
 		printf("\t\tPassword: ");
 		scanf("%s", password);
+		flush();
 
 		// Check the CREDENTIALS table
-		query = "SELECT USERNAME, PASSWORD, PRIVILEGE FROM CREDENTIALS";
+		//query = "SELECT USERNAME, PASSWORD, PRIVILEGE FROM CREDENTIALS";
+		sprintf(query, "SELECT USERNAME, PASSWORD, PRIVILEGE FROM CREDENTIALS WHERE USERNAME='%s' AND PASSWORD='%s'", username, password);
 		result = sqlite3_exec(db, query, DatabaseCallbackSelectSignIn, 0, &errorMsg);
 
 		if (result != SQLITE_OK) {
@@ -119,12 +122,14 @@ void CheckCredentials() {
 			return;
 		}
 
-		if (credentials == 2) {
+		if (credentials) {
+			sqlite3_close(db);
 			return;
 		}
 
 		counter--;
 	} while (counter > 0);
+
 	sqlite3_close(db);
 }
 
@@ -238,6 +243,7 @@ void UserMenu(char *privilege) {
 
 			printf("\t\t>>> ");
 			scanf("%u", &options);
+			flush();
 			switch(options) {
 				case USER_ADD: 
 					printf("Adding user...\n");
@@ -263,7 +269,7 @@ void UserMenu(char *privilege) {
 	// Student
 	else {
 
-		unsigned int options = VIEW_COURSES | PERSONAL_INFO | SIGN_OUT;
+		unsigned int options = VIEW_COURSES | PERSONAL_INFO | SIGN_OUT_STUDENT;
 
 		do {
 			HeaderText("Student Menu", false);
@@ -274,6 +280,7 @@ void UserMenu(char *privilege) {
 
 			printf("\t\t>>> ");
 			scanf("%u", &options);
+			flush();
 			switch(options) {
 				case VIEW_COURSES: 
 					printf("Viewing courses...\n");
@@ -282,15 +289,18 @@ void UserMenu(char *privilege) {
 					printf("Editing personal info...\n");
 					break;
 			}
-		} while (options != SIGN_OUT);
+		} while (options != SIGN_OUT_STUDENT);
 
 	}
 
 	// When a user signs out reset necessary global variables
-	strcpy(username, "");
-	strcpy(password, "");
-	strcpy(privilege, "");
-	credentials = 0;
+	username[0] = 0;
+	password[0] = 0;
+	privilege[0] = 0;
+	//strcpy(username, "");
+	//strcpy(password, "");
+	//strcpy(privilege, "");
+	credentials = false;
 }
 
 static int DatabaseCallbackTableCreate(void *NotUsed, int argc, char **argv, char **azColName) {
@@ -304,45 +314,72 @@ static int DatabaseCallbackTableCreate(void *NotUsed, int argc, char **argv, cha
 
 static int DatabaseCallbackSelectSignIn(void *data, int argc, char **argv, char **azColName) {
 	int i;
-	fprintf(stderr, "%s: ", (const char*)data);
 
 	for(i = 0; i<argc; i++) {
 		printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
 	}
 	printf("\n");
 
-	for(i = 0; i<argc; i++) {
-		printf("Inside for: %s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
-		if (strcmp(azColName[i], "USERNAME") == 0) 
-		{
-			printf("Inside if: %s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
-			if (strcmp(argv[i], username) == 0) {
-				//printf("Password found (password = %s)!: %s\n", password, argv[i]);
-				credentials++;
-			}
-			else { credentials = 0; }
-		}
-		if (strcmp(azColName[i], "PASSWORD") == 0) 
-		{
-			printf("Inside if: %s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
-			if (strcmp(argv[i], password) == 0) {
-				printf("Password found (password = %s)!: %s\n", password, argv[i]);
-				credentials++;
-			}
-			else { credentials = 0; }
-		}
+	if (argc) {
+		credentials = true;
+	}
+
+	for(i = 0; i<argc; i++)
+	{
 		if (strcmp(azColName[i], "PRIVILEGE") == 0) 
 		{
-			printf("Inside if: %s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
 			if (strcmp(argv[i], "admin") == 0) {
 				strcpy(privilege, "admin");
 			}
 			else if (strcmp(argv[i], "teacher") == 0) { 
 				strcpy(privilege, "teacher");
 			}
-			else { strcpy(privilege, "teacher"); }
+			else { strcpy(privilege, "student"); }
 		}
 	}
+
+	fprintf(stderr, "%s: ", (const char*)data);
+	printf("\n");
+
+
+
+	//for(i = 0; i<argc; i++) {
+	//	printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
+	//}
+	//printf("\n");
+
+	//for(i = 0; i<argc; i++) {
+	//	printf("Inside for: %s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
+	//	if (strcmp(azColName[i], "USERNAME") == 0) 
+	//	{
+	//		printf("Inside if: %s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
+	//		if (strcmp(argv[i], username) == 0) {
+	//			//printf("Password found (password = %s)!: %s\n", password, argv[i]);
+	//			credentials++;
+	//		}
+	//		else { credentials = 0; }
+	//	}
+	//	if (strcmp(azColName[i], "PASSWORD") == 0) 
+	//	{
+	//		printf("Inside if: %s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
+	//		if (strcmp(argv[i], password) == 0) {
+	//			printf("Password found (password = %s)!: %s\n", password, argv[i]);
+	//			credentials++;
+	//		}
+	//		else { credentials = 0; }
+	//	}
+	//	if (strcmp(azColName[i], "PRIVILEGE") == 0) 
+	//	{
+	//		printf("Inside if: %s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
+	//		if (strcmp(argv[i], "admin") == 0) {
+	//			strcpy(privilege, "admin");
+	//		}
+	//		else if (strcmp(argv[i], "teacher") == 0) { 
+	//			strcpy(privilege, "teacher");
+	//		}
+	//		else { strcpy(privilege, "teacher"); }
+	//	}
+	//}
 
 	printf("\n");
 	return 0;
@@ -362,13 +399,7 @@ void DatabaseAddUser() {
 	char query[255];
 	char *errorMsg;
 	bool result = false;
-	//int i, stime;
-	//long ltime;
-
-	//ltime = time(NULL);
-	//stime = (unsigned) ltime/2;
-	//srand(stime);
-
+	srand(time(NULL));
 	int id = rand();
 	char firstname[32];
 	char lastname[32];
@@ -376,7 +407,6 @@ void DatabaseAddUser() {
 	char address[50];
 	char mail[32];
 	int phone_number;
-
 	char newUsername[32];
 	char newPassword[32];
 	char newPrivilege[10];
@@ -447,17 +477,6 @@ void DatabaseAddUser() {
 	}
 
 	sqlite3_close(db);
-
-	//query = "CREATE TABLE PERSON("  \
-	//				 "ID						INT PRIMARY KEY			NOT NULL," \
-	//				 "NAME						TEXT    NOT NULL," \
-	//				 "LASTNAME				TEXT    NOT NULL," \
-	//				 "AGE							INT     NOT NULL," \
-	//				 "ADDRESS					CHAR(50)," \
-	//				 "MAIL						TEXT		NOT NULL );"
-	//				 "PHONE_NUMBER		INT);";
-	//				 // Execute SQL statement
-	//				 result = sqlite3_exec(db, query, DatabaseCallbackTableCreate, 0, &errorMsg);
 }
 
 int flush() {
