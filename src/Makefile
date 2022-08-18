@@ -5,3 +5,5 @@ COMPILE=$(COMPILER) $(OPTIONS)
 
 PROGRAM: sms.c
 	$(COMPILE) sms.c -o sms.out
+#PROGRAM: test.c
+#	$(COMPILE) test.c -o test.out
