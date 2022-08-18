@@ -13,6 +13,7 @@ void PrintAbout();
 bool DatabaseInit();
 void DatabaseAddUser();
 void DatabaseRemoveUser();
+void DatabaseUpdateUser();
 void UserMenu(char *privilege);
 int flush();
 
@@ -254,6 +255,7 @@ void UserMenu(char *privilege) {
 					break;
 				case USER_EDIT: 
 					printf("Editing user...\n");
+					DatabaseUpdateUser();
 					break;
 				case CHANGE_ADMIN_PASS: 
 					printf("Changing admin password...\n");
@@ -489,6 +491,213 @@ void DatabaseRemoveUser() {
 	else {
 		fprintf(stderr, "User credentials removed successfully.\n");
 	}
+
+	sqlite3_close(db);
+}
+
+void DatabaseUpdateUser() {
+	sqlite3 *db;
+	char query[255];
+	char valueToUpdateStr[32];
+	int valueToUpdateInt;
+	char *errorMsg;
+	bool result = false;
+	unsigned int options = PERSONAL | CREDENTIALS | EXIT_USER_UPDATE;
+	unsigned int optionsPersonal = UPDATE_FIRSTNAME | UPDATE_LASTNAME | UPDATE_AGE | UPDATE_ADDRESS | UPDATE_MAIL | UPDATE_PHONENUMBER | EXIT_USER_UPDATE;
+	unsigned int optionsCredentials = UPDATE_USERNAME | UPDATE_PASSWORD | EXIT_USER_UPDATE;
+	int id;
+
+	result = sqlite3_open(DATABASE, &db);
+
+	if (result != SQLITE_OK) {
+		fprintf(stderr, "Failed to connect to database: %s" , sqlite3_errmsg(db));
+		sqlite3_free(db);
+		return;
+	}
+
+	printf("\t\tID of user to be updated: ");
+	scanf("%d", &id);
+	flush();
+
+	HeaderText("Updating user", false);
+	do {
+		printf("\t\t(1) : Update personal information\n");
+		printf("\t\t(2) : Update login credentials\n");
+		printf("\t\t(9) : Exit user update menu\n");
+
+		printf("\t\t>>> ");
+		scanf("%u", &options);
+		switch(options) {
+			case PERSONAL: 
+				do {
+					printf("\t\t(1) : Update first name\n");
+					printf("\t\t(2) : Update last name\n");
+					printf("\t\t(3) : Update age\n");
+					printf("\t\t(4) : Update address\n");
+					printf("\t\t(5) : Update mail\n");
+					printf("\t\t(6) : Update phone number\n");
+					printf("\t\t(9) : Exit user update menu\n");
+
+					printf("\t\t>>> ");
+					scanf("%u", &optionsPersonal);
+
+					switch(optionsPersonal) {
+						case UPDATE_FIRSTNAME:
+							printf("\t\tNew first name: ");
+							scanf("%s", valueToUpdateStr);
+							flush();
+
+							sprintf(query, "UPDATE PERSON SET NAME = '%s' WHERE ID = %d", valueToUpdateStr, id);
+							result = sqlite3_exec(db, query, DatabaseCallback, 0, &errorMsg);
+							if (result != SQLITE_OK) {
+								fprintf(stderr, "Query error: %s" , sqlite3_errmsg(db));
+								sqlite3_free(db);
+								return;
+							}
+							else {
+								fprintf(stderr, "User first name updated successfully.\n");
+							}
+							break;
+
+						case UPDATE_LASTNAME:
+							printf("\t\tNew last name: ");
+							scanf("%s", valueToUpdateStr);
+							flush();
+
+							sprintf(query, "UPDATE PERSON SET LASTNAME = '%s' WHERE ID = %d", valueToUpdateStr, id);
+							result = sqlite3_exec(db, query, DatabaseCallback, 0, &errorMsg);
+							if (result != SQLITE_OK) {
+								fprintf(stderr, "Query error: %s" , sqlite3_errmsg(db));
+								sqlite3_free(db);
+								return;
+							}
+							else {
+								fprintf(stderr, "User last name updated successfully.\n");
+							}
+							break;
+
+						case UPDATE_AGE:
+							printf("\t\tNew age: ");
+							scanf("%d", &valueToUpdateInt);
+							flush();
+
+							sprintf(query, "UPDATE PERSON SET AGE = %d WHERE ID = %d", valueToUpdateInt, id);
+							result = sqlite3_exec(db, query, DatabaseCallback, 0, &errorMsg);
+							if (result != SQLITE_OK) {
+								fprintf(stderr, "Query error: %s" , sqlite3_errmsg(db));
+								sqlite3_free(db);
+								return;
+							}
+							else {
+								fprintf(stderr, "User age updated successfully.\n");
+							}
+							break;
+
+						case UPDATE_ADDRESS:
+							printf("\t\tNew address: ");
+							scanf("%s", valueToUpdateStr);
+							flush();
+
+							sprintf(query, "UPDATE PERSON SET ADDRESS = '%s' WHERE ID = %d", valueToUpdateStr, id);
+							result = sqlite3_exec(db, query, DatabaseCallback, 0, &errorMsg);
+							if (result != SQLITE_OK) {
+								fprintf(stderr, "Query error: %s" , sqlite3_errmsg(db));
+								sqlite3_free(db);
+								return;
+							}
+							else {
+								fprintf(stderr, "User address updated successfully.\n");
+							}
+							break;
+
+						case UPDATE_MAIL:
+							printf("\t\tNew mail: ");
+							scanf("%s", valueToUpdateStr);
+							flush();
+
+							sprintf(query, "UPDATE PERSON SET MAIL = '%s' WHERE ID = %d", valueToUpdateStr, id);
+							result = sqlite3_exec(db, query, DatabaseCallback, 0, &errorMsg);
+							if (result != SQLITE_OK) {
+								fprintf(stderr, "Query error: %s" , sqlite3_errmsg(db));
+								sqlite3_free(db);
+								return;
+							}
+							else {
+								fprintf(stderr, "User mail updated successfully.\n");
+							}
+							break;
+
+						case UPDATE_PHONENUMBER:
+							printf("\t\tNew phone number: ");
+							scanf("%d", &valueToUpdateInt);
+							flush();
+
+							sprintf(query, "UPDATE PERSON SET PHONE_NUMBER = %d WHERE ID = %d", valueToUpdateInt, id);
+							result = sqlite3_exec(db, query, DatabaseCallback, 0, &errorMsg);
+							if (result != SQLITE_OK) {
+								fprintf(stderr, "Query error: %s" , sqlite3_errmsg(db));
+								sqlite3_free(db);
+								return;
+							}
+							else {
+								fprintf(stderr, "User phone number updated successfully.\n");
+							}
+							break;
+						case EXIT_USER_UPDATE:
+							break;
+					}
+				} while (optionsPersonal != EXIT_USER_UPDATE);
+				break;
+
+			case CREDENTIALS: 
+				
+				do {
+					printf("\t\t(1) : Update username\n");
+					printf("\t\t(2) : Update user password\n");
+					printf("\t\t(9) : Exit user update menu\n");
+
+					printf("\t\t>>> ");
+					scanf("%u", &optionsCredentials);
+					switch(optionsCredentials) {
+						case UPDATE_USERNAME:
+							printf("\t\tNew username: ");
+							scanf("%s", valueToUpdateStr);
+							flush();
+
+							sprintf(query, "UPDATE CREDENTIALS SET USERNAME = '%s' WHERE ID = %d", valueToUpdateStr, id);
+							result = sqlite3_exec(db, query, DatabaseCallback, 0, &errorMsg);
+							if (result != SQLITE_OK) {
+								fprintf(stderr, "Query error: %s" , sqlite3_errmsg(db));
+								sqlite3_free(db);
+								return;
+							}
+							else {
+								fprintf(stderr, "User username updated successfully.\n");
+							}
+							break;
+
+						case UPDATE_PASSWORD: 
+							printf("\t\tNew password: ");
+							scanf("%s", valueToUpdateStr);
+							flush();
+
+							sprintf(query, "UPDATE CREDENTIALS SET PASSWORD = '%s' WHERE ID = %d", valueToUpdateStr, id);
+							result = sqlite3_exec(db, query, DatabaseCallback, 0, &errorMsg);
+							if (result != SQLITE_OK) {
+								fprintf(stderr, "Query error: %s" , sqlite3_errmsg(db));
+								sqlite3_free(db);
+								return;
+							}
+							else {
+								fprintf(stderr, "User password updated successfully.\n");
+							}
+							break;
+					}
+				} while (optionsCredentials != EXIT_USER_UPDATE);
+
+				break;
+		}
+	} while (options != EXIT_USER_UPDATE);
 
 	sqlite3_close(db);
 }
