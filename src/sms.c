@@ -12,6 +12,7 @@ void CheckCredentials();
 void PrintAbout();
 bool DatabaseInit();
 void DatabaseAddUser();
+void DatabaseRemoveUser();
 void UserMenu(char *privilege);
 int flush();
 
@@ -26,7 +27,6 @@ bool credentials = false;
 char privilege[10];
 
 int main() {
-	bool dbConnect = false;
 	bool about = false;
 	unsigned int options = SIGN_IN | ABOUT | EXIT_PROGRAM;
 
@@ -113,7 +113,6 @@ void CheckCredentials() {
 		flush();
 
 		// Check the CREDENTIALS table
-		//query = "SELECT USERNAME, PASSWORD, PRIVILEGE FROM CREDENTIALS";
 		sprintf(query, "SELECT USERNAME, PASSWORD, PRIVILEGE FROM CREDENTIALS WHERE USERNAME='%s' AND PASSWORD='%s'", username, password);
 		result = sqlite3_exec(db, query, DatabaseCallbackSelectSignIn, 0, &errorMsg);
 
@@ -251,6 +250,7 @@ void UserMenu(char *privilege) {
 					break;
 				case USER_REMOVE: 
 					printf("Removing user...\n");
+					DatabaseRemoveUser();
 					break;
 				case USER_EDIT: 
 					printf("Editing user...\n");
@@ -297,9 +297,6 @@ void UserMenu(char *privilege) {
 	username[0] = 0;
 	password[0] = 0;
 	privilege[0] = 0;
-	//strcpy(username, "");
-	//strcpy(password, "");
-	//strcpy(privilege, "");
 	credentials = false;
 }
 
@@ -341,51 +338,20 @@ static int DatabaseCallbackSelectSignIn(void *data, int argc, char **argv, char 
 	fprintf(stderr, "%s: ", (const char*)data);
 	printf("\n");
 
-
-
-	//for(i = 0; i<argc; i++) {
-	//	printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
-	//}
-	//printf("\n");
-
-	//for(i = 0; i<argc; i++) {
-	//	printf("Inside for: %s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
-	//	if (strcmp(azColName[i], "USERNAME") == 0) 
-	//	{
-	//		printf("Inside if: %s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
-	//		if (strcmp(argv[i], username) == 0) {
-	//			//printf("Password found (password = %s)!: %s\n", password, argv[i]);
-	//			credentials++;
-	//		}
-	//		else { credentials = 0; }
-	//	}
-	//	if (strcmp(azColName[i], "PASSWORD") == 0) 
-	//	{
-	//		printf("Inside if: %s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
-	//		if (strcmp(argv[i], password) == 0) {
-	//			printf("Password found (password = %s)!: %s\n", password, argv[i]);
-	//			credentials++;
-	//		}
-	//		else { credentials = 0; }
-	//	}
-	//	if (strcmp(azColName[i], "PRIVILEGE") == 0) 
-	//	{
-	//		printf("Inside if: %s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
-	//		if (strcmp(argv[i], "admin") == 0) {
-	//			strcpy(privilege, "admin");
-	//		}
-	//		else if (strcmp(argv[i], "teacher") == 0) { 
-	//			strcpy(privilege, "teacher");
-	//		}
-	//		else { strcpy(privilege, "teacher"); }
-	//	}
-	//}
-
 	printf("\n");
 	return 0;
 }
 
 static int DatabaseCallbackInsertUser(void *NotUsed, int argc, char **argv, char **azColName) {
+	int i;
+	for(i = 0; i<argc; i++) {
+		printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
+	}
+	printf("\n");
+	return 0;
+}
+
+static int DatabaseCallback(void *NotUsed, int argc, char **argv, char **azColName) {
 	int i;
 	for(i = 0; i<argc; i++) {
 		printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
@@ -474,6 +440,54 @@ void DatabaseAddUser() {
 	}
 	else {
 		fprintf(stderr, "User credentials added successfully\n.");
+	}
+
+	sqlite3_close(db);
+}
+
+void DatabaseRemoveUser() {
+	sqlite3 *db;
+	char query[255];
+	char *errorMsg;
+	bool result = false;
+	int id;
+
+	result = sqlite3_open(DATABASE, &db);
+
+	if (result != SQLITE_OK) {
+		fprintf(stderr, "Failed to connect to database: %s" , sqlite3_errmsg(db));
+		sqlite3_free(db);
+		return;
+	}
+
+	printf("\t\tID of user to be removed: ");
+	scanf("%d", &id);
+	flush();
+
+	sprintf(query, "DELETE FROM PERSON WHERE ID = %d", id);
+
+	result = sqlite3_exec(db, query, DatabaseCallback, 0, &errorMsg);
+
+	if (result != SQLITE_OK) {
+		fprintf(stderr, "Query error: %s" , sqlite3_errmsg(db));
+		sqlite3_free(db);
+		return;
+	}
+	else {
+		fprintf(stderr, "User personal info removed successfully.\n");
+	}
+
+	sprintf(query, "DELETE FROM CREDENTIALS WHERE ID = %d", id);
+
+	result = sqlite3_exec(db, query, DatabaseCallback, 0, &errorMsg);
+
+	if (result != SQLITE_OK) {
+		fprintf(stderr, "Query error: %s" , sqlite3_errmsg(db));
+		sqlite3_free(db);
+		return;
+	}
+	else {
+		fprintf(stderr, "User credentials removed successfully.\n");
 	}
 
 	sqlite3_close(db);
