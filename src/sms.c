@@ -14,6 +14,7 @@ bool DatabaseInit();
 void DatabaseAddUser();
 void DatabaseRemoveUser();
 void DatabaseUpdateUser();
+void DatabaseAdminUpdatePassword();
 void UserMenu(char *privilege);
 int flush();
 
@@ -171,61 +172,6 @@ bool DatabaseInit() {
 	return true;
 }
 
-
-// Create PERSON table
-// Create SQL statement
-//query = "CREATE TABLE PERSON("  \
-//				 "ID						INT PRIMARY KEY			NOT NULL," \
-//				 "NAME						TEXT    NOT NULL," \
-//				 "LASTNAME				TEXT    NOT NULL," \
-//				 "AGE							INT     NOT NULL," \
-//				 "ADDRESS					CHAR(50)," \
-//				 "MAIL						TEXT		NOT NULL );"
-//				 "PHONE_NUMBER		INT);";
-//				 // Execute SQL statement
-//				 result = sqlite3_exec(db, query, DatabaseCallbackTableCreate, 0, &errorMsg);
-//
-//				 if (result != SQLITE_OK) {
-//					 fprintf(stderr, "Query error: %s", errorMsg);
-//					 return false;
-//				 }
-//else {
-//	fprintf(stdout, "Table PERSON created successfully.\n");
-//}
-//}
-//
-//query = "SELECT * FROM CREDENTIALS";
-//result = sqlite3_exec(db, query, DatabaseCallbackSelect, 0, &errorMsg);
-//
-//if (result != SQLITE_OK) {
-//	fprintf(stderr, "Query error. CREDENTIALS table not found: %s", errorMsg);
-//
-//	// Create PERSON table
-//	// Create SQL statement
-//	query = "CREATE TABLE CREDENTIALS("  \
-//					 "ID						INT PRIMARY KEY			NOT NULL," \
-//					 "NAME						TEXT    NOT NULL," \
-//					 "LASTNAME				TEXT    NOT NULL," \
-//					 "AGE							INT     NOT NULL," \
-//					 "ADDRESS					CHAR(50)," \
-//					 "MAIL						TEXT		NOT NULL );"
-//					 "PHONE_NUMBER		INT);";
-//	// Execute SQL statement
-//	result = sqlite3_exec(db, query, DatabaseCallbackTableCreate, 0, &errorMsg);
-//
-//	if (result != SQLITE_OK) {
-//		fprintf(stderr, "Query error: %s", errorMsg);
-//		return false;
-//	}
-//	else {
-//		fprintf(stdout, "Table CREDENTIALS created successfully.\n");
-//	}
-//}
-//
-//return true;
-//}
-//}
-
 void UserMenu(char *privilege) {
 	// Admin
 	if (strcmp(privilege, "admin") == 0) {
@@ -259,6 +205,7 @@ void UserMenu(char *privilege) {
 					break;
 				case CHANGE_ADMIN_PASS: 
 					printf("Changing admin password...\n");
+					DatabaseAdminUpdatePassword();
 					break;
 			}
 		} while (options != SIGN_OUT_ADMIN);
@@ -650,7 +597,7 @@ void DatabaseUpdateUser() {
 				break;
 
 			case CREDENTIALS: 
-				
+
 				do {
 					printf("\t\t(1) : Update username\n");
 					printf("\t\t(2) : Update user password\n");
@@ -700,6 +647,46 @@ void DatabaseUpdateUser() {
 	} while (options != EXIT_USER_UPDATE);
 
 	sqlite3_close(db);
+}
+
+void DatabaseAdminUpdatePassword() {
+	sqlite3 *db;
+	char query[255];
+	char valueToUpdateStr[32];
+	char *errorMsg;
+	bool result = false;
+
+	result = sqlite3_open(DATABASE, &db);
+
+	if (result != SQLITE_OK) {
+		fprintf(stderr, "Failed to connect to database: %s" , sqlite3_errmsg(db));
+		sqlite3_free(db);
+		return;
+	}
+
+	printf("\t\t(Enter 0 to cancel)\n");
+	printf("\t\tNew password: ");
+	scanf("%s", valueToUpdateStr);
+	flush();
+
+	if (strcmp(valueToUpdateStr, "0") == 0) {
+		fprintf(stderr, "Admin password update cancelled.\n");
+		return;
+	}
+	else {
+		sprintf(query, "UPDATE CREDENTIALS SET PASSWORD = '%s' WHERE ID = 1", valueToUpdateStr);
+
+		result = sqlite3_exec(db, query, DatabaseCallback, 0, &errorMsg);
+		if (result != SQLITE_OK) {
+			fprintf(stderr, "Query error: %s" , sqlite3_errmsg(db));
+			sqlite3_free(db);
+			return;
+		}
+		else {
+			fprintf(stderr, "Admin password updated successfully.\n");
+		}
+	}
+
 }
 
 int flush() {
