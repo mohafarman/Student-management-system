@@ -1,0 +1,64 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_OUTPUT_EXCMD	mixed	/number, pattern, mixed, or combineV2/
+!_TAG_OUTPUT_FILESEP	slash	/slash or backslash/
+!_TAG_OUTPUT_MODE	u-ctags	/u-ctags or e-ctags/
+!_TAG_PATTERN_LENGTH_LIMIT	96	/0 for no limit/
+!_TAG_PROC_CWD	/home/farman/Education/Development/c/Student-management-system/src/	//
+!_TAG_PROGRAM_AUTHOR	Universal Ctags Team	//
+!_TAG_PROGRAM_NAME	Universal Ctags	/Derived from Exuberant Ctags/
+!_TAG_PROGRAM_URL	https://ctags.io/	/official site/
+!_TAG_PROGRAM_VERSION	5.9.0	/p5.9.20210905.0/
+ABOUT	sms.h	/^#define ABOUT /;"	d
+CHANGE_ADMIN_PASS	sms.h	/^#define CHANGE_ADMIN_PASS /;"	d
+CLEAR_SCREEN	sms.h	/^#define CLEAR_SCREEN /;"	d
+COMPILE	Makefile	/^COMPILE=$(COMPILER) $(OPTIONS)$/;"	m
+COMPILER	Makefile	/^COMPILER=c99$/;"	m
+CREDENTIALS	sms.h	/^#define CREDENTIALS /;"	d
+CheckCredentials	sms.c	/^void CheckCredentials() {$/;"	f	typeref:typename:void
+DATABASE	sms.h	/^#define DATABASE /;"	d
+DatabaseAddUser	sms.c	/^void DatabaseAddUser() {$/;"	f	typeref:typename:void
+DatabaseCallback	sms.c	/^static int DatabaseCallback(void *NotUsed, int argc, char **argv, char **azColName) {$/;"	f	typeref:typename:int	file:
+DatabaseCallbackInsertUser	sms.c	/^static int DatabaseCallbackInsertUser(void *NotUsed, int argc, char **argv, char **azColName) {$/;"	f	typeref:typename:int	file:
+DatabaseCallbackSelectSignIn	sms.c	/^static int DatabaseCallbackSelectSignIn(void *data, int argc, char **argv, char **azColName) {$/;"	f	typeref:typename:int	file:
+DatabaseCallbackTableCreate	sms.c	/^static int DatabaseCallbackTableCreate(void *NotUsed, int argc, char **argv, char **azColName) {$/;"	f	typeref:typename:int	file:
+DatabaseInit	sms.c	/^bool DatabaseInit() {$/;"	f	typeref:typename:bool
+DatabaseRemoveUser	sms.c	/^void DatabaseRemoveUser() {$/;"	f	typeref:typename:void
+DatabaseUpdateUser	sms.c	/^void DatabaseUpdateUser() {$/;"	f	typeref:typename:void
+EXIT_PROGRAM	sms.h	/^#define EXIT_PROGRAM /;"	d
+EXIT_USER_UPDATE	sms.h	/^#define EXIT_USER_UPDATE /;"	d
+HeaderText	sms.c	/^void HeaderText(char* str, bool about) {$/;"	f	typeref:typename:void
+OPTIONS	Makefile	/^OPTIONS=-Wall -Wextra -pedantic -std=c99 -l sqlite3$/;"	m
+PASSWORD_CORRECT	sms.h	/^#define PASSWORD_CORRECT /;"	d
+PERSONAL	sms.h	/^#define PERSONAL /;"	d
+PERSONAL_INFO	sms.h	/^#define PERSONAL_INFO /;"	d
+PROGRAM	Makefile	/^PROGRAM: sms.c$/;"	t
+PROGRAM	Makefile	/^PROGRAM=sms$/;"	m
+RESET_CURSOR	sms.h	/^#define RESET_CURSOR /;"	d
+SIGN_IN	sms.h	/^#define SIGN_IN /;"	d
+SIGN_OUT	sms.h	/^#define SIGN_OUT /;"	d
+SIGN_OUT_ADMIN	sms.h	/^#define SIGN_OUT_ADMIN /;"	d
+SIGN_OUT_STUDENT	sms.h	/^#define SIGN_OUT_STUDENT /;"	d
+SMS_H_	sms.h	/^#define SMS_H_$/;"	d
+UPDATE_ADDRESS	sms.h	/^#define UPDATE_ADDRESS /;"	d
+UPDATE_AGE	sms.h	/^#define UPDATE_AGE /;"	d
+UPDATE_FIRSTNAME	sms.h	/^#define UPDATE_FIRSTNAME /;"	d
+UPDATE_LASTNAME	sms.h	/^#define UPDATE_LASTNAME /;"	d
+UPDATE_MAIL	sms.h	/^#define UPDATE_MAIL /;"	d
+UPDATE_PASSWORD	sms.h	/^#define UPDATE_PASSWORD /;"	d
+UPDATE_PHONENUMBER	sms.h	/^#define UPDATE_PHONENUMBER /;"	d
+UPDATE_USERNAME	sms.h	/^#define UPDATE_USERNAME /;"	d
+USERNAME_CORRECT	sms.h	/^#define USERNAME_CORRECT /;"	d
+USER_ADD	sms.h	/^#define USER_ADD /;"	d
+USER_EDIT	sms.h	/^#define USER_EDIT /;"	d
+USER_REMOVE	sms.h	/^#define USER_REMOVE /;"	d
+UserMenu	sms.c	/^void UserMenu(char *privilege) {$/;"	f	typeref:typename:void
+VIEW_COURSES	sms.h	/^#define VIEW_COURSES /;"	d
+callback	test.c	/^static int callback(void *NotUsed, int argc, char **argv, char **azColName) {$/;"	f	typeref:typename:int	file:
+credentials	sms.c	/^bool credentials = false;$/;"	v	typeref:typename:bool
+flush	sms.c	/^int flush() {$/;"	f	typeref:typename:int
+main	sms.c	/^int main() {$/;"	f	typeref:typename:int
+main	test.c	/^int main() {$/;"	f	typeref:typename:int
+password	sms.c	/^char password[32];$/;"	v	typeref:typename:char[32]
+privilege	sms.c	/^char privilege[10];$/;"	v	typeref:typename:char[10]
+username	sms.c	/^char username[32];$/;"	v	typeref:typename:char[32]
