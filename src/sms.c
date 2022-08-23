@@ -14,19 +14,21 @@ bool DatabaseInit();
 void DatabaseAddUser();
 void DatabaseRemoveUser();
 void DatabaseUpdateUser();
+void DatabaseViewUserInfo();
 void DatabaseAdminUpdatePassword();
 void UserMenu(char *privilege);
 int flush();
 
 static int DatabaseCallbackSelectSignIn(void *data, int argc, char **argv, char **azColName);
-static int DatabaseCallbackInsertUser(void *NotUsed, int argc, char **argv, char **azColName);
-
+static int DatabaseCallback(void *NotUsed, int argc, char **argv, char **azColName);
+static int DatabaseCallbackViewUserInfo(void *NotUsed, int argc, char **argv, char **azColName);
 static int DatabaseCallbackTableCreate(void *NotUsed, int argc, char **argv, char **azColName);
 
 char username[32];
 char password[32];
 bool credentials = false;
 char privilege[10];
+int userID;
 
 int main() {
 	bool about = false;
@@ -60,8 +62,8 @@ int main() {
 }
 
 void HeaderText(char* str, bool about) {
-	//CLEAR_SCREEN;
-	//RESET_CURSOR;
+	CLEAR_SCREEN;
+	RESET_CURSOR;
 
 	if (about) {
 		printf("\t\t* * * * * * * * * * * * * * * * * * * * *\t\t\n");
@@ -115,7 +117,7 @@ void CheckCredentials() {
 		flush();
 
 		// Check the CREDENTIALS table
-		sprintf(query, "SELECT USERNAME, PASSWORD, PRIVILEGE FROM CREDENTIALS WHERE USERNAME='%s' AND PASSWORD='%s'", username, password);
+		sprintf(query, "SELECT * FROM CREDENTIALS WHERE USERNAME='%s' AND PASSWORD='%s'", username, password);
 		result = sqlite3_exec(db, query, DatabaseCallbackSelectSignIn, 0, &errorMsg);
 
 		if (result != SQLITE_OK) {
@@ -173,6 +175,9 @@ bool DatabaseInit() {
 }
 
 void UserMenu(char *privilege) {
+	CLEAR_SCREEN;
+	RESET_CURSOR;
+
 	// Admin
 	if (strcmp(privilege, "admin") == 0) {
 
@@ -214,18 +219,14 @@ void UserMenu(char *privilege) {
 	// Teacher
 	else if (strcmp(privilege, "teacher") == 0) {
 
-	}
-	// Student
-	else {
-
-		unsigned int options = VIEW_COURSES | PERSONAL_INFO | SIGN_OUT_STUDENT;
+		unsigned int options = VIEW_COURSES | VIEW_USER_INFO | EDIT_PERSONAL_CREDENTIALS_INFO | SIGN_OUT_TEACHER;
 
 		do {
-			HeaderText("Student Menu", false);
-			printf("\t\tYour average grade is: [PLACEHOLDER]\n");
+			HeaderText("Teacher Menu", false);
 			printf("\t\t(1) : View courses\n");
-			printf("\t\t(2) : Personal information\n");
-			printf("\t\t(3) : Sign Out\n");
+			printf("\t\t(2) : View personal info\n");
+			printf("\t\t(3) : Edit personal info or change credentials\n");
+			printf("\t\t(4) : Sign out\n");
 
 			printf("\t\t>>> ");
 			scanf("%u", &options);
@@ -234,8 +235,40 @@ void UserMenu(char *privilege) {
 				case VIEW_COURSES: 
 					printf("Viewing courses...\n");
 					break;
-				case PERSONAL_INFO: 
-					printf("Editing personal info...\n");
+				case VIEW_USER_INFO: 
+					DatabaseViewUserInfo();
+					break;
+				case EDIT_PERSONAL_CREDENTIALS_INFO: 
+					printf("Updating user info...\n");
+					break;
+			}
+		} while (options != SIGN_OUT_TEACHER);
+	}
+	// Student
+	else {
+
+		unsigned int options = VIEW_COURSES | VIEW_USER_INFO | EDIT_PERSONAL_CREDENTIALS_INFO | SIGN_OUT_STUDENT;
+
+		do {
+			HeaderText("Student Menu", false);
+			printf("\t\tYour average grade is: [PLACEHOLDER]\n");
+			printf("\t\t(1) : View courses\n");
+			printf("\t\t(2) : View personal info.\n");
+			printf("\t\t(3) : Change personal info or credentials.\n");
+			printf("\t\t(4) : Sign Out\n");
+
+			printf("\t\t>>> ");
+			scanf("%u", &options);
+			flush();
+			switch(options) {
+				case VIEW_COURSES: 
+					printf("Viewing courses...\n");
+					break;
+				case VIEW_USER_INFO: 
+					DatabaseViewUserInfo();
+					break;
+				case EDIT_PERSONAL_CREDENTIALS_INFO: 
+					printf("Editing info...\n");
 					break;
 			}
 		} while (options != SIGN_OUT_STUDENT);
@@ -272,6 +305,13 @@ static int DatabaseCallbackSelectSignIn(void *data, int argc, char **argv, char 
 
 	for(i = 0; i<argc; i++)
 	{
+
+		if (strcmp(azColName[i], "ID") == 0)  {
+			// Convert the const char* argv[i] to an int
+			// so it can be stored in userID and used by the SQL query
+			sscanf(argv[i], "%d", &userID);
+		}
+
 		if (strcmp(azColName[i], "PRIVILEGE") == 0) 
 		{
 			if (strcmp(argv[i], "admin") == 0) {
@@ -306,6 +346,17 @@ static int DatabaseCallback(void *NotUsed, int argc, char **argv, char **azColNa
 		printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
 	}
 	printf("\n");
+	return 0;
+}
+
+static int DatabaseCallbackViewUserInfo(void *NotUsed, int argc, char **argv, char **azColName) {
+	HeaderText("User info", false);
+	int i;
+	for(i = 0; i<argc; i++) {
+		printf("\t\t%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
+	}
+	printf("\n\t\tPress [Enter] to go back.");
+	getchar();
 	return 0;
 }
 
@@ -356,7 +407,7 @@ void DatabaseAddUser() {
 	sprintf(query, "INSERT INTO PERSON \
 			VALUES (%i, '%s', '%s', %d, '%s', '%s', %d);", id, firstname, lastname, age, address, mail, phone_number);
 
-	result = sqlite3_exec(db, query, DatabaseCallbackInsertUser, 0, &errorMsg);
+	result = sqlite3_exec(db, query, DatabaseCallback, 0, &errorMsg);
 
 	if (result != SQLITE_OK) {
 		fprintf(stderr, "Query error: %s" , sqlite3_errmsg(db));
@@ -380,7 +431,7 @@ void DatabaseAddUser() {
 	sprintf(query, "INSERT INTO CREDENTIALS \
 			VALUES (%i, '%s', '%s', '%s');", id, newUsername, newPassword, newPrivilege);
 
-	result = sqlite3_exec(db, query, DatabaseCallbackInsertUser, 0, &errorMsg);
+	result = sqlite3_exec(db, query, DatabaseCallback, 0, &errorMsg);
 
 	if (result != SQLITE_OK) {
 		fprintf(stderr, "Query error: %s" , sqlite3_errmsg(db));
@@ -686,7 +737,35 @@ void DatabaseAdminUpdatePassword() {
 			fprintf(stderr, "Admin password updated successfully.\n");
 		}
 	}
+}
 
+void DatabaseViewUserInfo() {
+	sqlite3 *db;
+	char query[255];
+	char *errorMsg;
+	bool result = false;
+
+	result = sqlite3_open(DATABASE, &db);
+
+	if (result != SQLITE_OK) {
+		fprintf(stderr, "Failed to connect to database: %s" , sqlite3_errmsg(db));
+		sqlite3_free(db);
+		return;
+	}
+
+	sprintf(query, "SELECT * FROM PERSON WHERE ID = %d", userID);
+
+	result = sqlite3_exec(db, query, DatabaseCallbackViewUserInfo, 0, &errorMsg);
+	if (result != SQLITE_OK) {
+		fprintf(stderr, "Query error: %s" , sqlite3_errmsg(db));
+		sqlite3_free(db);
+		return;
+	}
+	else {
+		fprintf(stderr, "Viewing user info successfully.\n");
+	}
+
+	sqlite3_close(db);
 }
 
 int flush() {
