@@ -83,7 +83,6 @@ void HeaderText(char* str, bool about) {
 		printf("\t\t* * * * * * * * * * * * * * * * * * * * *\t\t\n");
 		printf("\t\t* * * * * * * * * * * * * * * * * * * * *\t\t\n");
 	}
-
 }
 
 void CheckCredentials() {
@@ -225,7 +224,7 @@ void UserMenu(char *privilege) {
 			HeaderText("Teacher Menu", false);
 			printf("\t\t(1) : View courses\n");
 			printf("\t\t(2) : View personal info\n");
-			printf("\t\t(3) : Edit personal info or change credentials\n");
+			printf("\t\t(3) : Edit personal info or credentials\n");
 			printf("\t\t(4) : Sign out\n");
 
 			printf("\t\t>>> ");
@@ -240,6 +239,7 @@ void UserMenu(char *privilege) {
 					break;
 				case EDIT_PERSONAL_CREDENTIALS_INFO: 
 					printf("Updating user info...\n");
+					DatabaseUpdateUser();
 					break;
 			}
 		} while (options != SIGN_OUT_TEACHER);
@@ -269,6 +269,7 @@ void UserMenu(char *privilege) {
 					break;
 				case EDIT_PERSONAL_CREDENTIALS_INFO: 
 					printf("Editing info...\n");
+					DatabaseUpdateUser();
 					break;
 			}
 		} while (options != SIGN_OUT_STUDENT);
@@ -513,9 +514,14 @@ void DatabaseUpdateUser() {
 		return;
 	}
 
-	printf("\t\tID of user to be updated: ");
-	scanf("%d", &id);
-	flush();
+	if (userID == 1) {
+		printf("\t\tID of user to be updated: ");
+		scanf("%d", &id);
+		flush();
+	}
+	else {
+		id = userID;
+	}
 
 	HeaderText("Updating user", false);
 	do {
