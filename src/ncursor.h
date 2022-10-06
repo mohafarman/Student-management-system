@@ -1,0 +1,287 @@
+/**
+ *
+ *	@file		ncursor.h
+ *
+ *	@author		Mohamad Farman
+ *
+ *	@date		23 September 2022
+ *
+ *	@brief		Handles all ncursor related functionality
+ *
+ */
+
+#ifndef NCURSES_H
+#define NCURSES_H
+
+#include "database.h"
+#include <ncurses.h>
+#include <menu.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
+#define HEIGHT 40
+#define WIDTH 80
+#define STARTY_CENTER (LINES  / 2)
+#define STARTX_CENTER (COLS  / 2)
+
+struct sms_window {
+	WINDOW *win;
+	unsigned int width, height, starty, startx;
+};
+
+//****************** PROTOTYPES ******************//
+
+// Functionality
+static void die(WINDOW *local_win);
+static void init_ncurses();
+static MENU *populate_menu(const char *local_menu_choices[], int num_choices);
+static WINDOW *create_newwin(int height, int width, int start_y, int start_x);
+static void redraw_window(WINDOW *local_win, int width, const char *string);
+
+// Print
+static void print_in_middle(WINDOW *local_win, int starty, int startx, const char *string, chtype color);
+
+// Menus
+static void main_menu();
+
+// Windows
+static void sign_in_win();
+static void about_win();
+
+//****************** DEFINITIONS ******************//
+static void init_ncurses() {
+	initscr();
+	start_color();
+	cbreak();
+	noecho();
+	keypad(stdscr, TRUE);
+	curs_set(0);
+}
+
+static WINDOW *create_newwin(int height, int width, int start_y, int start_x) {
+	WINDOW *local_win = NULL;
+	keypad(local_win, TRUE);
+	local_win = newwin(height, width, start_y, start_x);
+
+	box(local_win, 0, 0);
+
+	wrefresh(local_win);
+	return local_win;
+}
+
+static MENU *populate_menu(const char *local_menu_choices[], int num_choices) {
+	ITEM **local_menu_items;
+	int i;
+
+	local_menu_items = (ITEM **)calloc(num_choices + 1, sizeof(ITEM *));
+	for (i = 0; i < num_choices; ++i) {
+		local_menu_items[i] = new_item(local_menu_choices[i], "");
+	}
+
+	return new_menu(local_menu_items);
+}
+
+static void print_header(WINDOW *local_win, int width, const char *string) {
+	int max_y, max_x, start_y = 2;
+	init_pair(1, COLOR_CYAN, COLOR_BLACK);
+
+	getmaxyx(local_win, max_y, max_x);
+
+	wattron(local_win, A_REVERSE | COLOR_PAIR(1));
+	mvwprintw(local_win, 1, ( max_x - strlen(string) )/2, "%s", string);
+	wattroff(local_win, A_REVERSE | COLOR_PAIR(1));
+
+	mvwaddch(local_win, 2, 0, ACS_LTEE);
+	mvwhline(local_win, 2, 1, ACS_HLINE, width - 2);
+	mvwaddch(local_win, 2, width - 1, ACS_RTEE);
+
+	wrefresh(local_win);
+	refresh();
+}
+
+
+static void print_in_middle(WINDOW *local_win, int starty, int startx, const char *string, chtype color) {
+	int max_y, max_x;
+
+	getmaxyx(local_win, max_y, max_x);
+
+	wattron(local_win, A_REVERSE | COLOR_PAIR(1));
+	mvwprintw(local_win, starty, ( max_x - strlen(string) )/2, "%s", string);
+	wattroff(local_win, A_REVERSE | COLOR_PAIR(1));
+
+	wrefresh(local_win);
+	refresh();
+}
+
+static void die(WINDOW *local_win) {
+	delwin(local_win);
+	endwin();
+	exit(EXIT_SUCCESS);
+}
+
+static void clear_window(WINDOW *local_win) {
+	wclear(local_win);
+	delwin(local_win);
+	refresh();
+}
+
+static void redraw_window(WINDOW *local_win, int width, const char *string) {
+	box(local_win, 0, 0);
+	print_header(local_win, width, string);
+	wrefresh(local_win);
+}
+
+static void main_menu() {
+	WINDOW *main_win;
+	const char *header = " Main Menu ";
+	int height = 15;
+	int width = 40;
+	MENU *main_menu;
+	ITEM *selected_item;
+	const char *selected_item_str;
+	int c;
+	const char *mainMenuChoices[] = {
+		"Sign in",
+		"About",
+		"Exit",
+	};
+	int num_choices = ARRAY_SIZE(mainMenuChoices);
+
+	main_win = create_newwin(height, width, STARTY_CENTER - height, STARTX_CENTER - ( width / 2 ));
+	keypad(main_win, TRUE);
+
+	main_menu = populate_menu(mainMenuChoices, num_choices);
+
+	set_menu_win(main_menu, main_win);
+	set_menu_sub(main_menu, derwin(main_win, height - 4, width - 4, 4, 1));
+	set_menu_mark(main_menu, " >> ");
+	post_menu(main_menu);
+
+	print_header(main_win, width, header);
+
+	wrefresh(main_win);
+
+	while ( (c = wgetch(main_win)) != KEY_F(1) ) {
+		switch(c) {
+			case KEY_UP:
+				menu_driver(main_menu, REQ_UP_ITEM);
+				break;
+			case KEY_DOWN:
+				menu_driver(main_menu, REQ_DOWN_ITEM);
+				break;
+				// VIM Keybindings
+			case 107:	
+				menu_driver(main_menu, REQ_UP_ITEM);
+				break;
+			case 106:
+				menu_driver(main_menu, REQ_DOWN_ITEM);
+				break;
+			case 10:	// RETURN, Select an item
+				selected_item_str = item_name(current_item(main_menu));
+				mvwprintw(stdscr, 2, 0, "Selected: %s", selected_item_str);
+				wrefresh(stdscr);
+
+				// Turn item into a string then compare with an option
+				if (strcmp(item_name(current_item(main_menu)), mainMenuChoices[0]) == 0)	// Sign in
+				{
+					sign_in_win();
+					// Reset selected item
+					memset(&selected_item_str, 0, sizeof(selected_item_str));
+					redraw_window(main_win, width, header);
+					break;
+				}
+				else if (strcmp(item_name(current_item(main_menu)), mainMenuChoices[1]) == 0)	// About
+				{
+					about_win();
+					memset(&selected_item_str, 0, sizeof(selected_item_str));
+					redraw_window(main_win, width, header);
+					break;
+				}
+				else {
+					die(main_win);
+				}
+		}
+	}
+
+	die(main_win);
+}
+
+/**
+ *	@brief Handles sign in menu
+ */
+static void sign_in_win() {
+	WINDOW *sign_in_win;
+	const char *header = " Sign in Menu ";
+	int height = 15;
+	int width = 40;
+	int c;
+	char username[32];
+	char password[32];
+	char query[255], result[255], error_msg[255];
+
+	sign_in_win = create_newwin(height, width, STARTY_CENTER - height, STARTX_CENTER - ( width / 2 ));
+	keypad(sign_in_win, TRUE);
+	box(sign_in_win, 0, 0);
+
+	print_header(sign_in_win, width, header);
+
+	// Print out info to window
+	wattron(sign_in_win, A_BOLD);
+	mvwprintw(sign_in_win, 4, 2, "Username: ");
+	mvwprintw(sign_in_win, 6, 2, "Password: ");
+	wattroff(sign_in_win, A_BOLD);
+
+	wattron(sign_in_win, A_REVERSE);
+	mvwprintw(sign_in_win, 10, width/2 - strlen("Enter"), " Enter ");
+	wattroff(sign_in_win, A_REVERSE);
+	wrefresh(sign_in_win);
+
+	// Handle input from user
+	echo();
+	curs_set(1);
+
+	mvwscanw(sign_in_win, 4, 2 + strlen("Username: "), "%s", username);
+	mvwscanw(sign_in_win, 6, 2 + strlen("Password: "), "%s", password);
+
+	// Check for credentials
+	// Database
+	sprintf(query, "SELECT * FROM CREDENTIALS WHERE username='%s' AND password='%s'", username, password);
+	result = sqlite3_exec(db, query, callback_sign_in, 0, &error_msg);
+
+	noecho();
+	curs_set(0);
+	clear_window(sign_in_win);
+}
+
+static void about_win() {
+	WINDOW *about_win;
+	const char *header = " About ";
+	int height = 15;
+	int width = 40;
+	int c;
+
+	about_win = create_newwin(height, width, STARTY_CENTER - height, STARTX_CENTER - ( width / 2 ));
+	keypad(about_win, TRUE);
+	box(about_win, 0, 0);
+
+	print_header(about_win, width, header);
+
+	// Print out info to window
+	//wattron(sign_in_win, A_BOLD);
+	mvwaddstr(about_win, 4, 2,  "This software is maintained and");
+	mvwaddstr(about_win, 5, 2,  "developed by Mohamad Farman");
+	mvwaddstr(about_win, 7, 2,  "For any inquires send to");
+	mvwaddstr(about_win, 8, 2,  "mohamadfarman977@gmail.com");
+	//wattroff(sign_in_win, A_BOLD);
+
+	// Check for user exiting software.
+	c = wgetch(about_win);
+	if (c == KEY_F(1)) {
+		die(about_win);
+	}
+
+	clear_window(about_win);
+}
+
+#endif

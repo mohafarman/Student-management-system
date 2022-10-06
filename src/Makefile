@@ -6,5 +6,3 @@ COMPILE=$(COMPILER) $(OPTIONS) $(LDLIBS)
 
 PROGRAM: sms.c
 	$(COMPILE) sms.c -o a.out
-#PROGRAM: test.c
-#	$(COMPILE) test.c -o test.out
