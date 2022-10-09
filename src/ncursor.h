@@ -14,8 +14,10 @@
 #define NCURSES_H
 
 #include "database.h"
+#include "sms.h"
 #include <ncurses.h>
 #include <menu.h>
+#include <sqlite3.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -24,6 +26,9 @@
 #define WIDTH 80
 #define STARTY_CENTER (LINES  / 2)
 #define STARTX_CENTER (COLS  / 2)
+
+#define MSG_ERROR 1
+#define MSG_SUCCESS 2
 
 struct sms_window {
 	WINDOW *win;
@@ -44,10 +49,14 @@ static void print_in_middle(WINDOW *local_win, int starty, int startx, const cha
 
 // Menus
 static void main_menu();
+static void user_menu();
 
 // Windows
+static void popup_msg_win(const char *error_msg);
 static void sign_in_win();
 static void about_win();
+static void add_user_win();
+static void remove_user_win();
 
 //****************** DEFINITIONS ******************//
 static void init_ncurses() {
@@ -122,8 +131,8 @@ static void die(WINDOW *local_win) {
 
 static void clear_window(WINDOW *local_win) {
 	wclear(local_win);
+	wrefresh(local_win);
 	delwin(local_win);
-	refresh();
 }
 
 static void redraw_window(WINDOW *local_win, int width, const char *string) {
@@ -218,7 +227,8 @@ static void sign_in_win() {
 	int c;
 	char username[32];
 	char password[32];
-	char query[255], result[255], error_msg[255];
+	char query[255], error_msg[255];
+	int result;
 
 	sign_in_win = create_newwin(height, width, STARTY_CENTER - height, STARTX_CENTER - ( width / 2 ));
 	keypad(sign_in_win, TRUE);
@@ -248,6 +258,26 @@ static void sign_in_win() {
 	// Database
 	sprintf(query, "SELECT * FROM CREDENTIALS WHERE username='%s' AND password='%s'", username, password);
 	result = sqlite3_exec(db, query, callback_sign_in, 0, &error_msg);
+
+	// Error
+	if (result != SQLITE_OK) {
+	}
+
+	// If correct credentials
+	if (credentials) {
+		mvwprintw(stdscr, 6, 0, "Success!");
+		refresh();
+
+		noecho();
+		curs_set(0);
+		user_menu();
+
+		//TODO:
+		// 1) User menu
+		// 2) Teacher menu
+		// 3) Admin Menu
+		// Based on old src. One function to rule them all?
+	}
 
 	noecho();
 	curs_set(0);
@@ -282,6 +312,298 @@ static void about_win() {
 	}
 
 	clear_window(about_win);
+}
+
+static void user_menu() {
+	WINDOW *user_win;
+	int height = 15;
+	int width = 40;
+	const char *header;
+	MENU *user_menu;
+	ITEM *selected_item;
+	const char *selected_item_str;
+	int c;
+	// Menu options for each type of user
+	const char *adminMenuChoices[] = {
+		"Add new user",
+		"Remove user",
+		"Edit user info",
+		"Courses menu",
+		"Change admin password",
+		"Sign out",
+	};
+	const char *teacherMenuChoices[] = {
+		"View courses",
+		"View personal info",
+		"Edit personal info or credentials",
+		"Sign out",
+	};
+	const char *studentMenuChoices[] = {
+		"View courses",
+		"View personal info",
+		"Edit personal info or credentials",
+		"Sign out",
+	};
+
+	// Initialize header and menu options based on user privilege
+	if (strcmp(privilege, "admin") == 0) {
+		header = " Admin Menu ";
+		int num_choices = ARRAY_SIZE(adminMenuChoices);
+		user_menu = populate_menu(adminMenuChoices, num_choices);
+	}
+
+	else if (strcmp(privilege, "teacher") == 0) {
+		header = " Teacher Menu ";
+		int num_choices = ARRAY_SIZE(teacherMenuChoices);
+		user_menu = populate_menu(teacherMenuChoices, num_choices);
+	}
+
+	else {
+		header = " Student Menu ";
+		int num_choices = ARRAY_SIZE(studentMenuChoices);
+		user_menu = populate_menu(studentMenuChoices, num_choices);
+	}
+
+	// Create window
+	user_win = create_newwin(height, width, STARTY_CENTER - height, STARTX_CENTER - ( width / 2 ));
+	keypad(user_win, TRUE);
+
+	// Create and initialize menu
+	set_menu_win(user_menu, user_win);
+	set_menu_sub(user_menu, derwin(user_win, height - 4, width - 4, 4, 1));
+	set_menu_mark(user_menu, " >> ");
+	post_menu(user_menu);
+
+	print_header(user_win, width, header);
+
+	wrefresh(user_win);
+
+	while ( (c = wgetch(user_win)) != KEY_F(1) ) {
+		switch(c) {
+			case KEY_UP:
+				menu_driver(user_menu, REQ_UP_ITEM);
+				break;
+			case KEY_DOWN:
+				menu_driver(user_menu, REQ_DOWN_ITEM);
+				break;
+				// VIM Keybindings
+			case 107:	
+				menu_driver(user_menu, REQ_UP_ITEM);
+				break;
+			case 106:
+				menu_driver(user_menu, REQ_DOWN_ITEM);
+				break;
+			case 10:	// RETURN, Select an item
+				selected_item_str = item_name(current_item(user_menu));
+				mvwprintw(stdscr, 2, 0, "Selected: %s", selected_item_str);
+				wrefresh(stdscr);
+
+				// Turn item into a string then compare with an option
+				if (strcmp(item_name(current_item(user_menu)), adminMenuChoices[0]) == 0)	// Add new user
+				{
+					add_user_win();
+					redraw_window(user_win, width, header);
+					break;
+				}
+				else if (strcmp(item_name(current_item(user_menu)), adminMenuChoices[1]) == 0)	// Remove user
+				{
+					break;
+				}
+				else if (strcmp(item_name(current_item(user_menu)), adminMenuChoices[2]) == 0)	// Edit user info
+				{
+					break;
+				}
+				else if (strcmp(item_name(current_item(user_menu)), adminMenuChoices[3]) == 0)	// Course menu
+				{
+					break;
+				}
+				else if (strcmp(item_name(current_item(user_menu)), adminMenuChoices[4]) == 0)	// Change admin password
+				{
+					break;
+				}
+				else if (strcmp(item_name(current_item(user_menu)), adminMenuChoices[5]) == 0)	// Sign out
+				{
+					break;
+				}
+				else if (strcmp(item_name(current_item(user_menu)), studentMenuChoices[0]) == 0)	// View courses info
+				{
+					// Reset selected item
+					//memset(&selected_item_str, 0, sizeof(selected_item_str));
+					//redraw_window(user_win, width, header);
+					break;
+				}
+				else if (strcmp(item_name(current_item(user_menu)), studentMenuChoices[1]) == 0)	// View personal info
+				{
+					// Reset selected item
+					//memset(&selected_item_str, 0, sizeof(selected_item_str));
+					//redraw_window(user_win, width, header);
+					break;
+				}
+				else if (strcmp(item_name(current_item(user_menu)), studentMenuChoices[2]) == 0)	// Edit personal info or credentials
+				{
+					// Reset selected item
+					//memset(&selected_item_str, 0, sizeof(selected_item_str));
+					//redraw_window(user_win, width, header);
+					break;
+				}
+				else if (strcmp(item_name(current_item(user_menu)), studentMenuChoices[3]) == 0)	// Sign out
+				{
+					// Reset selected item
+					//memset(&selected_item_str, 0, sizeof(selected_item_str));
+					//redraw_window(user_win, width, header);
+					break;
+				}
+				else {
+					die(user_win);
+				}
+		}
+	}
+	die(user_win);
+}
+
+static void add_user_win() {
+	WINDOW *add_user_win;;
+	int height = 22;
+	int width = 40;
+	const char *header = " Add New User ";
+	char query[255], error_msg[255];
+	int result;
+	// Input
+	char firstname[32];
+	char lastname[32];
+	int age;
+	char address[50];
+	char mail[32];
+	int phone_number;
+	char new_username[32];
+	char new_password[32];
+	char new_privilege[10];
+	int c;
+
+	// Create window
+	add_user_win = create_newwin(height, width, STARTY_CENTER - height, STARTX_CENTER - ( width / 2 ));
+	keypad(add_user_win, TRUE);
+
+	print_header(add_user_win, width, header);
+	wrefresh(add_user_win);
+
+	// Print out info to window for personal info
+	wattron(add_user_win, A_BOLD);
+	mvwprintw(add_user_win, 4, 2, "First name: ");
+	mvwprintw(add_user_win, 6, 2, "Last name: ");
+	mvwprintw(add_user_win, 8, 2, "Age: ");
+	mvwprintw(add_user_win, 10, 2, "Mail: ");
+	mvwprintw(add_user_win, 12, 2, "Address (Optional): ");
+	mvwprintw(add_user_win, 14, 2, "Phone number: ");
+	wattroff(add_user_win, A_BOLD);
+
+	wattron(add_user_win, A_REVERSE);
+	mvwprintw(add_user_win, height - 1, width/2 - strlen("Enter"), " Enter ");
+	wattroff(add_user_win, A_REVERSE);
+	wrefresh(add_user_win);
+
+	// Handle input from user
+	echo();
+	curs_set(1);
+
+	// Input for personal info
+	mvwscanw(add_user_win, 4, 2 + strlen("First name: "), "%s", firstname);
+	mvwscanw(add_user_win, 6, 2 + strlen("Last name: "), "%s", lastname);
+	mvwscanw(add_user_win, 8, 2 + strlen("Age: "), "%d", &age);
+	mvwscanw(add_user_win, 10, 2 + strlen("Mail: "), "%s", mail);
+	mvwscanw(add_user_win, 12, 2 + strlen("Address (Optional): "), "%s", address);
+	mvwscanw(add_user_win, 14, 2 + strlen("Phone number: "), "%d", &phone_number);
+
+	// Redraw window
+	add_user_win = create_newwin(height, width, STARTY_CENTER - height, STARTX_CENTER - ( width / 2 ));
+	keypad(add_user_win, TRUE);
+
+	print_header(add_user_win, width, header);
+	wrefresh(add_user_win);
+
+	// Print out info to window for credentials
+	wattron(add_user_win, A_BOLD);
+	mvwprintw(add_user_win, 4, 2, "Username: ");
+	mvwprintw(add_user_win, 6, 2, "Password: ");
+	mvwprintw(add_user_win, 8, 2, "Privilege (teacher, student): ");
+	wattroff(add_user_win, A_BOLD);
+
+	wattron(add_user_win, A_REVERSE);
+	mvwprintw(add_user_win, height - 1, width/2 - strlen("Enter"), " Enter ");
+	wattroff(add_user_win, A_REVERSE);
+	wrefresh(add_user_win);
+
+	// Input for credentials
+	mvwscanw(add_user_win, 4, 2 + strlen("Username: "), "%s", new_username);
+	mvwscanw(add_user_win, 6, 2 + strlen("Password: "), "%s", new_password);
+	mvwscanw(add_user_win, 8, 2 + strlen("Privilege (teacher, student): "), "%s", new_privilege);
+
+	// Query to Person table w personal info
+	sprintf(query, "INSERT INTO Person (first_name, last_name, age, mail, address, phone_number) \
+			VALUES ('%s', '%s', %d, '%s', '%s', %d);", firstname, lastname, age, mail, address, phone_number);
+
+	result = sqlite3_exec(db, query, callback_generic, 0, &error_msg);
+
+	mvwprintw(stdscr, 8, 0, "result = %d", result);
+	if (result != SQLITE_OK) {
+		popup_msg_win(MSG_ERROR, "User personal info could not be added to database.");
+	}
+
+	// Query to Credentials table w credentials
+	sprintf(query, "INSERT INTO Credentials (credentials_id, username, password, privilege) \
+			VALUES ((SELECT person_id FROM Person WHERE first_name = '%s' AND last_name = '%s'), '%s', '%s', '%s');", firstname, lastname, new_username, new_password, new_privilege);
+
+	result = sqlite3_exec(db, query, callback_generic, 0, &error_msg);
+
+	mvwprintw(stdscr, 8, 0, "result = %d", result);
+	if (result != SQLITE_OK) {
+		popup_msg_win(MSG_ERROR, "User credentials could not be added to database.");
+	}
+	else { 
+		popup_msg_win(MSG_SUCCESS, "User added successfully!");
+   	}
+
+	noecho();
+	curs_set(0);
+	clear_window(add_user_win);
+}
+
+static void popup_msg_win(int status, const char *msg) {
+	WINDOW *error_win;
+	int height = 10;
+	int width = 50;
+	const char *header;
+	int c;
+
+	if (status == MSG_ERROR) {
+		header = " ERROR! ";
+	}
+
+	else if (status == MSG_SUCCESS) {
+		header = " SUCCESS! ";
+	}
+
+	error_win = create_newwin(height, width, STARTY_CENTER - height, STARTX_CENTER - ( width / 2 ));
+	keypad(error_win, TRUE);
+	box(error_win, 0, 0);
+
+	print_header(error_win, width, header);
+
+	// Print out info to window
+	//wattron(error_win, A_BOLD);
+	mvwaddstr(error_win, 4, 2, msg);
+	wattron(error_win, A_REVERSE | A_COLOR);
+	mvwaddstr(error_win, height - 2, width / 2, "[ ENTER ]");
+	wattroff(error_win, A_REVERSE | A_COLOR);
+	//wattroff(error_win, A_BOLD);
+
+	// Check for user exiting software.
+	c = wgetch(error_win);
+	if (c == KEY_F(1)) {
+		die(error_win);
+	}
+
+	clear_window(error_win);
 }
 
 #endif

@@ -12,13 +12,17 @@
 
 #define DATABASE "sms.db"
 
-//****************** PROTOTYPES ******************//
 
-static void db_connect(sqlite3 *db);
+//**************** GLOBAL VARIABLES ***************//
+static sqlite3 *db;
+
+//****************** PROTOTYPES ******************//
+static void db_connect();
 static int callback_sign_in(void *data, int argc, char **argv, char **azColName);
+static int callback_generic(void *data, int argc, char **argv, char **azColName);
 
 //***************** DEFINITIONS ******************//
-static void db_connect(sqlite3 *db) {
+static void db_connect() {
 	int result;
 	result = sqlite3_open(DATABASE, &db);
 
@@ -57,6 +61,16 @@ static int callback_sign_in(void *data, int argc, char **argv, char **azColName)
 		}
 	}
 
+	return 0;
+}
+
+static int callback_generic(void *data, int argc, char **argv, char **azColName) {
+	int i;
+	for(i = 0; i<argc; i++) {
+		printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
+
+	}
+	printf("\n");
 	return 0;
 }
 

@@ -8,11 +8,8 @@
 #include "sms.h"
 
 int main() {
-	// Init variables
-	sqlite3 *db;
-
 	// Connect to database
-	db_connect(db);
+	db_connect();
 
 	// Initialize ncursor
 	init_ncurses();
