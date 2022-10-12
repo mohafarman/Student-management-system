@@ -52,11 +52,12 @@ static void main_menu();
 static void user_menu();
 
 // Windows
-static void popup_msg_win(const char *error_msg);
+static void popup_msg_win(int status, const char *msg);
 static void sign_in_win();
 static void about_win();
 static void add_user_win();
 static void remove_user_win();
+static void manage_users_win();
 
 //****************** DEFINITIONS ******************//
 static void init_ncurses() {
@@ -325,9 +326,13 @@ static void user_menu() {
 	int c;
 	// Menu options for each type of user
 	const char *adminMenuChoices[] = {
-		"Add new user",
-		"Remove user",
-		"Edit user info",
+		//"Add new user",
+		//"Remove user",
+		//"Edit user info",
+		//"Courses menu",
+		//"Change admin password",
+		//"Sign out",
+		"Manage Users menu",
 		"Courses menu",
 		"Change admin password",
 		"Sign out",
@@ -399,32 +404,40 @@ static void user_menu() {
 				wrefresh(stdscr);
 
 				// Turn item into a string then compare with an option
-				if (strcmp(item_name(current_item(user_menu)), adminMenuChoices[0]) == 0)	// Add new user
+				if (strcmp(item_name(current_item(user_menu)), adminMenuChoices[0]) == 0)	// Manage users menu
 				{
-					add_user_win();
+					manage_users_win();
 					redraw_window(user_win, width, header);
 					break;
 				}
-				else if (strcmp(item_name(current_item(user_menu)), adminMenuChoices[1]) == 0)	// Remove user
+				else if (strcmp(item_name(current_item(user_menu)), adminMenuChoices[1]) == 0)	// Courses menu
 				{
 					break;
 				}
-				else if (strcmp(item_name(current_item(user_menu)), adminMenuChoices[2]) == 0)	// Edit user info
+				else if (strcmp(item_name(current_item(user_menu)), adminMenuChoices[2]) == 0)	// Change admin password
 				{
 					break;
 				}
-				else if (strcmp(item_name(current_item(user_menu)), adminMenuChoices[3]) == 0)	// Course menu
+				else if (strcmp(item_name(current_item(user_menu)), adminMenuChoices[3]) == 0)	// Sign out
 				{
+					// Reset selected item
+					memset(&selected_item_str, 0, sizeof(selected_item_str));
+					clear_window(user_win);
+					return;
 					break;
 				}
-				else if (strcmp(item_name(current_item(user_menu)), adminMenuChoices[4]) == 0)	// Change admin password
-				{
-					break;
-				}
-				else if (strcmp(item_name(current_item(user_menu)), adminMenuChoices[5]) == 0)	// Sign out
-				{
-					break;
-				}
+				//else if (strcmp(item_name(current_item(user_menu)), adminMenuChoices[4]) == 0)	// 
+				//{
+				//	break;
+				//}
+				//else if (strcmp(item_name(current_item(user_menu)), adminMenuChoices[5]) == 0)	// 
+				//{
+				//	// Reset selected item
+				//	memset(&selected_item_str, 0, sizeof(selected_item_str));
+				//	clear_window(user_win);
+				//	return;
+				//	break;
+				//}
 				else if (strcmp(item_name(current_item(user_menu)), studentMenuChoices[0]) == 0)	// View courses info
 				{
 					// Reset selected item
@@ -449,8 +462,9 @@ static void user_menu() {
 				else if (strcmp(item_name(current_item(user_menu)), studentMenuChoices[3]) == 0)	// Sign out
 				{
 					// Reset selected item
-					//memset(&selected_item_str, 0, sizeof(selected_item_str));
-					//redraw_window(user_win, width, header);
+					memset(&selected_item_str, 0, sizeof(selected_item_str));
+					clear_window(user_win);
+					return;
 					break;
 				}
 				else {
@@ -561,7 +575,7 @@ static void add_user_win() {
 	}
 	else { 
 		popup_msg_win(MSG_SUCCESS, "User added successfully!");
-   	}
+	}
 
 	noecho();
 	curs_set(0);
@@ -569,7 +583,7 @@ static void add_user_win() {
 }
 
 static void popup_msg_win(int status, const char *msg) {
-	WINDOW *error_win;
+	WINDOW *popup_msg_win;
 	int height = 10;
 	int width = 50;
 	const char *header;
@@ -583,27 +597,163 @@ static void popup_msg_win(int status, const char *msg) {
 		header = " SUCCESS! ";
 	}
 
-	error_win = create_newwin(height, width, STARTY_CENTER - height, STARTX_CENTER - ( width / 2 ));
-	keypad(error_win, TRUE);
-	box(error_win, 0, 0);
+	popup_msg_win = create_newwin(height, width, STARTY_CENTER - height, STARTX_CENTER - ( width / 2 ));
+	keypad(popup_msg_win, TRUE);
+	box(popup_msg_win, 0, 0);
 
-	print_header(error_win, width, header);
+	print_header(popup_msg_win, width, header);
 
 	// Print out info to window
-	//wattron(error_win, A_BOLD);
-	mvwaddstr(error_win, 4, 2, msg);
-	wattron(error_win, A_REVERSE | A_COLOR);
-	mvwaddstr(error_win, height - 2, width / 2, "[ ENTER ]");
-	wattroff(error_win, A_REVERSE | A_COLOR);
-	//wattroff(error_win, A_BOLD);
+	//wattron(popup_msg_win, A_BOLD);
+	mvwaddstr(popup_msg_win, 4, 2, msg);
+	wattron(popup_msg_win, A_REVERSE | A_COLOR);
+	mvwaddstr(popup_msg_win, height - 2, width / 2, "[ ENTER ]");
+	wattroff(popup_msg_win, A_REVERSE | A_COLOR);
+	//wattroff(popup_msg_win, A_BOLD);
 
 	// Check for user exiting software.
-	c = wgetch(error_win);
+	c = wgetch(popup_msg_win);
 	if (c == KEY_F(1)) {
-		die(error_win);
+		die(popup_msg_win);
 	}
 
-	clear_window(error_win);
+	clear_window(popup_msg_win);
+}
+
+static void remove_user_win() {
+	WINDOW *remove_user_win;
+	int height = 10;
+	int width = 50;
+	const char *header;
+	int c;
+
+	remove_user_win = create_newwin(height, width, STARTY_CENTER - height, STARTX_CENTER - ( width / 2 ));
+	keypad(remove_user_win, TRUE);
+	box(remove_user_win, 0, 0);
+
+	print_header(remove_user_win, width, header);
+
+	// Check for user exiting software.
+	c = wgetch(remove_user_win);
+	if (c == KEY_F(1)) {
+		die(remove_user_win);
+	}
+	clear_window(remove_user_win);
+}
+
+static void manage_users_win() {
+	WINDOW *manage_users_win;
+	int height = 30;
+	int width = 60;
+	MENU *manage_users_menu;
+	ITEM *selected_item;
+	const char *selected_item_str;
+	const char *header = " Manage Users ";
+	char query[255], error_msg[255];
+	sqlite3_stmt *stmt;
+	int pos_y = 4, pos_x = 2;	// For printing out list of users
+	int column_length = width / 3;	// Divided by number of columns retrieved from db
+	int result;
+	int c, i;
+
+	const char *manage_users_menu_options[] = {
+		"Add new user",
+		"Remove user",
+		"Edit user info",
+	};
+	int num_choices = ARRAY_SIZE(manage_users_menu_options);
+
+	// Create window
+	manage_users_win = create_newwin(height, width, STARTY_CENTER - height, STARTX_CENTER - ( width / 2 ));
+	keypad(manage_users_win, TRUE);
+
+	print_header(manage_users_win, width, header);
+
+
+	// Create and initialize menu
+	manage_users_menu  = populate_menu(manage_users_menu_options, num_choices);
+	set_menu_win(manage_users_menu, manage_users_win);
+	set_menu_sub(manage_users_menu, derwin(manage_users_win, height - 4, width - 2, 8, 2));
+	set_menu_format(manage_users_menu, 1, 3);
+	set_menu_mark(manage_users_menu, " >> ");
+	post_menu(manage_users_menu);
+
+	// Print out users to the window
+	sprintf(query, "SELECT person_id, first_name, last_name FROM Person");
+	sqlite3_prepare_v2(db, query, strlen(query), &stmt, NULL);
+
+	pos_y = 4;
+	while(sqlite3_step(stmt) == SQLITE_ROW) {
+		for (i = 0; i < sqlite3_column_count(stmt); ++i) {
+			mvwprintw(manage_users_win, pos_y, pos_x, "%s", sqlite3_column_text(stmt, i));
+			pos_x += column_length;
+		}
+		// Reset the starting position for the next row
+		pos_y += 1;
+		pos_x = 2;
+	}
+
+	sqlite3_finalize(stmt);
+
+	// Print out the heading for each column
+	pos_y = 3;
+	wattr_on(manage_users_win, A_UNDERLINE | A_BOLD, NULL);
+	mvwprintw(manage_users_win, pos_y, pos_x, "User ID");
+	pos_x += column_length;
+	mvwprintw(manage_users_win, pos_y, pos_x, "First Name");
+	pos_x += column_length;
+	mvwprintw(manage_users_win, pos_y, pos_x, "Last Name");
+	pos_x += column_length;
+	wattr_off(manage_users_win,A_UNDERLINE | A_BOLD, NULL);
+
+	wrefresh(manage_users_win);
+
+
+	while ( (c = wgetch(manage_users_win)) != KEY_F(1) ) {
+		switch(c) {
+			case KEY_RIGHT:
+				menu_driver(manage_users_menu, REQ_RIGHT_ITEM);
+				break;
+			case KEY_LEFT:
+				menu_driver(manage_users_menu, REQ_LEFT_ITEM);
+				break;
+				// VIM Keybindings
+			case 107:	
+				menu_driver(manage_users_menu, REQ_UP_ITEM);
+				break;
+			case 106:
+				menu_driver(manage_users_menu, REQ_DOWN_ITEM);
+				break;
+			case 10:	// RETURN, Select an item
+				selected_item_str = item_name(current_item(manage_users_menu));
+				mvwprintw(stdscr, 2, 0, "Selected: %s", selected_item_str);
+				wrefresh(stdscr);
+
+				// Turn item into a string then compare with an option
+				if (strcmp(item_name(current_item(manage_users_menu)), manage_users_menu_options[0]) == 0)	// Add new user
+				{
+					break;
+				}
+				else if (strcmp(item_name(current_item(manage_users_menu)), manage_users_menu_options[1]) == 0)	// Remove user
+				{
+					break;
+				}
+				else if (strcmp(item_name(current_item(manage_users_menu)), manage_users_menu_options[2]) == 0)	// Edit user info
+				{
+					break;
+				}
+				else {	// Return
+				}
+		}
+	}
+
+	// Check for user exiting software.
+	c = wgetch(manage_users_win);
+	if (c == KEY_F(1)) {
+		die(manage_users_win);
+	}
+
+	clear_window(manage_users_win);
 }
 
 #endif
