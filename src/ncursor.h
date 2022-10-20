@@ -55,9 +55,10 @@ static void user_menu();
 static void popup_msg_win(int status, const char *msg);
 static void sign_in_win();
 static void about_win();
-static void add_user_win();
-static void remove_user_win();
-static void manage_users_win();
+static void admin_add_user_win(int height, int width, int y_offset, int x_offset);
+static void admin_remove_user_win(int height, int width, int y_offset, int x_offset);
+static void admin_manage_users_win();
+static void get_users(WINDOW *local_win, int pos_y, int pos_x, int width);
 
 //****************** DEFINITIONS ******************//
 static void init_ncurses() {
@@ -406,7 +407,7 @@ static void user_menu() {
 				// Turn item into a string then compare with an option
 				if (strcmp(item_name(current_item(user_menu)), adminMenuChoices[0]) == 0)	// Manage users menu
 				{
-					manage_users_win();
+					admin_manage_users_win();
 					redraw_window(user_win, width, header);
 					break;
 				}
@@ -475,10 +476,10 @@ static void user_menu() {
 	die(user_win);
 }
 
-static void add_user_win() {
+static void admin_add_user_win(int height, int width, int y_offset, int x_offset) {
 	WINDOW *add_user_win;;
-	int height = 22;
-	int width = 40;
+	//int height = 22;
+	//int width = 40;
 	const char *header = " Add New User ";
 	char query[255], error_msg[255];
 	int result;
@@ -495,7 +496,7 @@ static void add_user_win() {
 	int c;
 
 	// Create window
-	add_user_win = create_newwin(height, width, STARTY_CENTER - height, STARTX_CENTER - ( width / 2 ));
+	add_user_win = create_newwin(height, width, y_offset, x_offset);
 	keypad(add_user_win, TRUE);
 
 	print_header(add_user_win, width, header);
@@ -529,7 +530,7 @@ static void add_user_win() {
 	mvwscanw(add_user_win, 14, 2 + strlen("Phone number: "), "%d", &phone_number);
 
 	// Redraw window
-	add_user_win = create_newwin(height, width, STARTY_CENTER - height, STARTX_CENTER - ( width / 2 ));
+	add_user_win = create_newwin(height, width, y_offset, x_offset);
 	keypad(add_user_win, TRUE);
 
 	print_header(add_user_win, width, header);
@@ -620,35 +621,72 @@ static void popup_msg_win(int status, const char *msg) {
 	clear_window(popup_msg_win);
 }
 
-static void remove_user_win() {
+static void admin_remove_user_win(int height, int width, int y_offset, int x_offset) {
 	WINDOW *remove_user_win;
-	int height = 10;
-	int width = 50;
-	const char *header;
+	const char *header = " Remove User ";
+	char query[255], error_msg[255];
+	int result;
+	int user_id;
 	int c;
+	init_pair(1, COLOR_GREEN, COLOR_BLACK);
+	init_pair(2, COLOR_RED, COLOR_BLACK);
 
-	remove_user_win = create_newwin(height, width, STARTY_CENTER - height, STARTX_CENTER - ( width / 2 ));
+	remove_user_win = create_newwin(height, width, y_offset, x_offset);
 	keypad(remove_user_win, TRUE);
 	box(remove_user_win, 0, 0);
 
-	print_header(remove_user_win, width, header);
+print_header(remove_user_win, width, header);
+
+	// Print out info to window for personal info
+	wattron(remove_user_win, A_BOLD);
+	mvwprintw(remove_user_win, 4, 2, "User ID: ");
+	wattroff(remove_user_win, A_BOLD);
+
+	// Handle input from user
+	echo();
+	curs_set(1);
+
+	// Input for personal info
+	mvwscanw(remove_user_win, 4, 2 + strlen("User ID: "), "%d", &user_id);
+
+	noecho();
+	curs_set(0);
+
+	sprintf(query, "DELETE FROM Person WHERE person_id = %d", user_id);
+	result = sqlite3_exec(db, query, callback_sign_in, 0, &error_msg);
+
+	// Error
+	if (result != SQLITE_OK) {
+		wattron(remove_user_win, A_BOLD | A_REVERSE | COLOR_PAIR(2));
+		mvwprintw(remove_user_win, 10, 10, "User ID %d was not deleted.", user_id);
+		wattroff(remove_user_win, A_BOLD | A_REVERSE  | COLOR_PAIR(2));
+	}
+	else {
+		wattron(remove_user_win, A_BOLD | A_REVERSE  | COLOR_PAIR(1));
+		mvwprintw(remove_user_win, 10, 10, "User ID %d deleted successfully.", user_id);
+		wattroff(remove_user_win, A_BOLD | A_REVERSE  | COLOR_PAIR(1));
+	}
+
+	wrefresh(remove_user_win);
 
 	// Check for user exiting software.
 	c = wgetch(remove_user_win);
 	if (c == KEY_F(1)) {
 		die(remove_user_win);
 	}
+
 	clear_window(remove_user_win);
 }
 
-static void manage_users_win() {
-	WINDOW *manage_users_win;
+static void admin_manage_users_win() {
+	WINDOW *manage_users_win, *options_users_win;;
 	int height = 30;
 	int width = 60;
+	int y_offset = 14, x_offset_users = 60, x_offset_options = 120;
 	MENU *manage_users_menu;
 	ITEM *selected_item;
 	const char *selected_item_str;
-	const char *header = " Manage Users ";
+	const char *header_users = " Users ", *header_options = " Options ";
 	char query[255], error_msg[255];
 	sqlite3_stmt *stmt;
 	int pos_y = 4, pos_x = 2;	// For printing out list of users
@@ -660,21 +698,25 @@ static void manage_users_win() {
 		"Add new user",
 		"Remove user",
 		"Edit user info",
+		"Go back"
 	};
 	int num_choices = ARRAY_SIZE(manage_users_menu_options);
 
 	// Create window
-	manage_users_win = create_newwin(height, width, STARTY_CENTER - height, STARTX_CENTER - ( width / 2 ));
+	manage_users_win = create_newwin(height, width, y_offset, x_offset_users);
+	options_users_win = create_newwin(height, width, y_offset, x_offset_options);
 	keypad(manage_users_win, TRUE);
+	keypad(options_users_win, TRUE);
 
-	print_header(manage_users_win, width, header);
+	print_header(manage_users_win, width, header_users);
+	print_header(options_users_win, width, header_options);
 
 
 	// Create and initialize menu
 	manage_users_menu  = populate_menu(manage_users_menu_options, num_choices);
-	set_menu_win(manage_users_menu, manage_users_win);
-	set_menu_sub(manage_users_menu, derwin(manage_users_win, height - 4, width - 2, 8, 2));
-	set_menu_format(manage_users_menu, 1, 3);
+	set_menu_win(manage_users_menu, options_users_win);
+	set_menu_sub(manage_users_menu, derwin(options_users_win, height - 4, width - 2, 4, 2));
+	//set_menu_format(manage_users_menu, 1, 3);
 	set_menu_mark(manage_users_menu, " >> ");
 	post_menu(manage_users_menu);
 
@@ -707,9 +749,10 @@ static void manage_users_win() {
 	wattr_off(manage_users_win,A_UNDERLINE | A_BOLD, NULL);
 
 	wrefresh(manage_users_win);
+	wrefresh(options_users_win);
 
 
-	while ( (c = wgetch(manage_users_win)) != KEY_F(1) ) {
+	while ( (c = wgetch(options_users_win)) != KEY_F(1) ) {
 		switch(c) {
 			case KEY_RIGHT:
 				menu_driver(manage_users_menu, REQ_RIGHT_ITEM);
@@ -732,17 +775,34 @@ static void manage_users_win() {
 				// Turn item into a string then compare with an option
 				if (strcmp(item_name(current_item(manage_users_menu)), manage_users_menu_options[0]) == 0)	// Add new user
 				{
+					admin_add_user_win(height, width, y_offset, x_offset_options);
+					// Update user list
+					get_users(manage_users_win, pos_y, pos_x, width);
+					
+					// Redraw windows 
+					redraw_window(manage_users_win, width, header_users);
+					redraw_window(options_users_win, width, header_options);
 					break;
 				}
 				else if (strcmp(item_name(current_item(manage_users_menu)), manage_users_menu_options[1]) == 0)	// Remove user
 				{
+					admin_remove_user_win(height, width, y_offset, x_offset_options);
+					// Update user list
+					get_users(manage_users_win, pos_y, pos_x, width);
+
+					// Redraw windows 
+					redraw_window(manage_users_win, width, header_users);
+					redraw_window(options_users_win, width, header_options);
 					break;
 				}
 				else if (strcmp(item_name(current_item(manage_users_menu)), manage_users_menu_options[2]) == 0)	// Edit user info
 				{
 					break;
 				}
-				else {	// Return
+				else {	// Go back
+					clear_window(manage_users_win);
+					clear_window(options_users_win);
+					return;
 				}
 		}
 	}
@@ -751,9 +811,47 @@ static void manage_users_win() {
 	c = wgetch(manage_users_win);
 	if (c == KEY_F(1)) {
 		die(manage_users_win);
+		die(options_users_win);
 	}
 
 	clear_window(manage_users_win);
+	clear_window(options_users_win);
+}
+
+void get_users(WINDOW *local_win, int pos_y, int pos_x, int width) {
+	char query[255], error_msg[255];
+	sqlite3_stmt *stmt;
+	int column_length = width / 3;	// Divided by number of columns retrieved from db
+	int result;
+	int i;
+
+	// Print out users to the window
+	sprintf(query, "SELECT person_id, first_name, last_name FROM Person");
+	sqlite3_prepare_v2(db, query, strlen(query), &stmt, NULL);
+
+	pos_y = 4;
+	while(sqlite3_step(stmt) == SQLITE_ROW) {
+		for (i = 0; i < sqlite3_column_count(stmt); ++i) {
+			mvwprintw(local_win, pos_y, pos_x, "%s", sqlite3_column_text(stmt, i));
+			pos_x += column_length;
+		}
+		// Reset the starting position for the next row
+		pos_y += 1;
+		pos_x = 2;
+	}
+
+	sqlite3_finalize(stmt);
+
+	// Print out the heading for each column
+	pos_y = 3;
+	wattr_on(local_win, A_UNDERLINE | A_BOLD, NULL);
+	mvwprintw(local_win, pos_y, pos_x, "User ID");
+	pos_x += column_length;
+	mvwprintw(local_win, pos_y, pos_x, "First Name");
+	pos_x += column_length;
+	mvwprintw(local_win, pos_y, pos_x, "Last Name");
+	pos_x += column_length;
+	wattr_off(local_win,A_UNDERLINE | A_BOLD, NULL);
 }
 
 #endif
