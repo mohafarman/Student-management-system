@@ -36,6 +36,11 @@ struct sms_window {
 	unsigned int width, height, starty, startx;
 };
 
+struct ncursor_menu {
+	MENU *menu;
+	ITEM **items;
+};
+
 //****************** PROTOTYPES ******************//
 
 // Functionality
@@ -44,6 +49,8 @@ static void init_ncurses();
 static MENU *populate_menu(const char *local_menu_choices[], int num_choices);
 static WINDOW *create_newwin(int height, int width, int start_y, int start_x);
 static void redraw_window(WINDOW *local_win, int width, const char *string);
+static void clear_window(WINDOW *local_win);
+static void clear_menu(MENU *local_win, int num_options);
 
 // Print
 static void print_in_middle(WINDOW *local_win, int starty, int startx, const char *string, chtype color);
@@ -137,6 +144,16 @@ static void clear_window(WINDOW *local_win) {
 	wclear(local_win);
 	wrefresh(local_win);
 	delwin(local_win);
+}
+
+static void clear_menu(MENU *local_win, int num_options) {
+}
+
+static void clear_redraw_window(WINDOW *local_win, int width, const char *string) {
+	wclear(local_win);
+	box(local_win, 0, 0);
+	print_header(local_win, width, string);
+	wrefresh(local_win);
 }
 
 static void redraw_window(WINDOW *local_win, int width, const char *string) {
@@ -800,12 +817,16 @@ static void admin_manage_users_win() {
 				else if (strcmp(item_name(current_item(manage_users_menu)), manage_users_menu_options[2]) == 0)	// Edit user info
 				{
 					admin_edit_user_info_win(height, width, y_offset, x_offset_options);
+					// Redraw windows 
+					clear_redraw_window(manage_users_win, width, header_users);
+					clear_redraw_window(options_users_win, width, header_options);
+					
 					// Update user list
 					get_users(manage_users_win, pos_y, pos_x, width);
-
-					// Redraw windows 
-					redraw_window(manage_users_win, width, header_users);
-					redraw_window(options_users_win, width, header_options);
+					// Upon return the menu is not visible with a user input
+					// With this menu_driver the menu items will be visible again
+					// and puts the user on the first item
+					menu_driver(manage_users_menu, REQ_FIRST_ITEM);		
 					break;
 				}
 				else {	// Go back
@@ -846,13 +867,13 @@ void get_users(WINDOW *local_win, int pos_y, int pos_x, int width) {
 		}
 		// Reset the starting position for the next row
 		pos_y += 1;
-		pos_x = 2;
+		pos_x = 4;
 	}
 
 	sqlite3_finalize(stmt);
 
 	// Print out the heading for each column
-	pos_y = 3;
+	pos_y = 4;
 	wattr_on(local_win, A_UNDERLINE | A_BOLD, NULL);
 	mvwprintw(local_win, pos_y, pos_x, "User ID");
 	pos_x += column_length;
@@ -861,13 +882,14 @@ void get_users(WINDOW *local_win, int pos_y, int pos_x, int width) {
 	mvwprintw(local_win, pos_y, pos_x, "Last Name");
 	pos_x += column_length;
 	wattr_off(local_win,A_UNDERLINE | A_BOLD, NULL);
+
+	wrefresh(local_win);
 }
 
 static void admin_edit_user_info_win(int height, int width, int y_offset, int x_offset) {
+	struct ncursor_menu;
 	WINDOW *edit_user_info_win;
-	//MENU *edit_user_info_menu;
-	FIELD *edit_user_info_field[3];
-	FORM *edit_user_info_form;
+	MENU *edit_user_info_menu;
 	const char *selected_item_str;
 	const char *header = " Edit User Info ";
 	char query[255], error_msg[255];
@@ -876,47 +898,20 @@ static void admin_edit_user_info_win(int height, int width, int y_offset, int x_
 	int result;
 	int user_id;
 	int c, i, ch, rows, cols;
-	init_pair(1, COLOR_GREEN, COLOR_BLACK);
+	init_pair(1, COLOR_WHITE, COLOR_BLACK);
 	init_pair(2, COLOR_RED, COLOR_BLACK);
 
-
-	// Init fields
-	edit_user_info_field[0] = new_field(1, 20, 4, 25, 0, 0);
-	edit_user_info_field[1] = new_field(1, 20, 5, 25, 0, 0);
-	edit_user_info_field[2] = NULL;
-	//edit_user_info_field[3] = new_field(1, 20, 7, 25, 0, 0);
-	//edit_user_info_field[4] = new_field(1, 20, 8, 25, 0, 0);
-	//edit_user_info_field[5] = new_field(1, 20, 9, 25, 0, 0);
-	//edit_user_info_field[6] = NULL;
-
-	// Set fields options
-	set_field_back(edit_user_info_field[0], A_UNDERLINE);
-	field_opts_off(edit_user_info_field[0], O_AUTOSKIP);	// Don't go to next field when this one is full
-	set_field_back(edit_user_info_field[1], A_UNDERLINE);
-	field_opts_off(edit_user_info_field[1], O_AUTOSKIP);	// Don't go to next field when this one is full
-	//set_field_back(edit_user_info_field[2], A_UNDERLINE);
-	//field_opts_off(edit_user_info_field[2], O_AUTOSKIP);	// Don't go to next field when this one is full
-	//set_field_back(edit_user_info_field[3], A_UNDERLINE);
-	//field_opts_off(edit_user_info_field[3], O_AUTOSKIP);	// Don't go to next field when this one is full
-	//set_field_back(edit_user_info_field[4], A_UNDERLINE);
-	//field_opts_off(edit_user_info_field[4], O_AUTOSKIP);	// Don't go to next field when this one is full
-	//set_field_back(edit_user_info_field[5], A_UNDERLINE);
-	//field_opts_off(edit_user_info_field[5], O_AUTOSKIP);	// Don't go to next field when this one is full
-
-	edit_user_info_form = new_form(edit_user_info_field);
-
-	scale_form(edit_user_info_form, &rows, &cols);
-
-	//const char *edit_user_info_menu_options[] = {
-	//	//"User ID:",
-	//	"First Name:",
-	//	"Last Name:",
-	//	"Age:",
-	//	"Mail:",
-	//	"Address:",
-	//	"Phone Number:"
-	//};
-	//int num_choices = ARRAY_SIZE(edit_user_info_menu_options);
+	const char *edit_user_info_menu_options[] = {
+		//"User ID:",
+		"First Name:",
+		"Last Name:",
+		"Age:",
+		"Mail:",
+		"Address:",
+		"Phone Number:",
+		"Exit"
+	};
+	int num_choices = ARRAY_SIZE(edit_user_info_menu_options);
 
 	edit_user_info_win = create_newwin(height, width, y_offset, x_offset);
 	keypad(edit_user_info_win, TRUE);
@@ -944,84 +939,112 @@ static void admin_edit_user_info_win(int height, int width, int y_offset, int x_
 	//wclear(edit_user_info_win);
 	redraw_window(edit_user_info_win, width, header);
 
-	//sprintf(query, "SELECT first_name, last_name, age, mail, address, phone_number FROM Person WHERE person_id = %d", user_id);
+	sprintf(query, "SELECT first_name, last_name, age, mail, address, phone_number FROM Person WHERE person_id = %d", user_id);
 
 	// Print out users to the window
-	//sqlite3_prepare_v2(db, query, strlen(query), &stmt, NULL);
+	sqlite3_prepare_v2(db, query, strlen(query), &stmt, NULL);
 
-	//pos_y = 5;
-	//while(sqlite3_step(stmt) == SQLITE_ROW) {
-	//	for (i = 0; i < sqlite3_column_count(stmt); ++i) {
-	//		mvwprintw(edit_user_info_win, pos_y, pos_x, "%s", sqlite3_column_text(stmt, i));
-	//		pos_y++;
-	//	}
-	//}
+	while(sqlite3_step(stmt) == SQLITE_ROW) {
+		for (i = 0; i < sqlite3_column_count(stmt); ++i) {
+			mvwprintw(edit_user_info_win, pos_y, pos_x, "%s", sqlite3_column_text(stmt, i));
+			pos_y++;
+		}
+	}
 
-	//sqlite3_finalize(stmt);
+	wattron(edit_user_info_win, A_UNDERLINE);
+	mvwprintw(edit_user_info_win, 12, 6, "Select an option to edit or exit");
+	wattroff(edit_user_info_win, A_UNDERLINE);
 
-	// Set main window and subwindows for form
-	set_form_win(edit_user_info_form, edit_user_info_win);
-	set_form_sub(edit_user_info_form, derwin(edit_user_info_win, height - 10, width - 10, 4, 4));
+	sqlite3_finalize(stmt);
 
-	// Handle input from user
-	echo();
-	curs_set(1);
+	// Create and initialize menu
+	edit_user_info_menu  = populate_menu(edit_user_info_menu_options, num_choices);
+	set_menu_win(edit_user_info_menu, edit_user_info_win);
+	set_menu_sub(edit_user_info_menu, derwin(edit_user_info_win, height - 4, width - 2, 4, 2));
+	//set_menu_format(edit_user_info_menu, num_choices, 1);
+	set_menu_mark(edit_user_info_menu, " >> ");
+	//set_menu_fore(edit_user_info_menu, A_BOLD, A_UNDERLINE, A_BLINK);
+	post_menu(edit_user_info_menu);
 
-	post_form(edit_user_info_form);
-	wrefresh(edit_user_info_win);
+	redraw_window(edit_user_info_win, width, header);
 
-	//// Create and initialize menu
-	//edit_user_info_menu  = populate_menu(edit_user_info_menu_options, num_choices);
-	//set_menu_win(edit_user_info_menu, edit_user_info_win);
-	//set_menu_sub(edit_user_info_menu, derwin(edit_user_info_win, height - 4, width - 2, 4, 2));
-	////set_menu_format(edit_user_info_menu, num_choices, 1);
-	//set_menu_mark(edit_user_info_menu, " >> ");
-	//post_menu(edit_user_info_menu);
-
-	//Print out the heading for each column
-	//pos_y = 4;
-	//pos_x = 2;
-	//wattr_on(edit_user_info_win, A_BOLD, NULL);
-	//mvwprintw(edit_user_info_win, pos_y, pos_x, "User ID:");
-	//pos_y += 2;
-	//mvwprintw(edit_user_info_win, pos_y, pos_x, "First name:");
-	//pos_y += 2;
-	//mvwprintw(edit_user_info_win, pos_y, pos_x, "Last name:");
-	//pos_y += 2;
-	//mvwprintw(edit_user_info_win, pos_y, pos_x, "Age:");
-	//pos_y += 2;
-	//mvwprintw(edit_user_info_win, pos_y, pos_x, "Mail:");
-	//pos_y += 2;
-	//mvwprintw(edit_user_info_win, pos_y, pos_x, "Address:");
-	//pos_y += 2;
-	//mvwprintw(edit_user_info_win, pos_y, pos_x, "Phone number:");
-	//pos_y += 2;
-	//wattr_off(edit_user_info_win, A_BOLD, NULL);
-
-	// Error
-	//if (result != SQLITE_OK) {
-	//	wattron(edit_user_info_win, A_BOLD | A_REVERSE | COLOR_PAIR(2));
-	//	mvwprintw(edit_user_info_win, 10, 10, "User ID %d can not be found.", user_id);
-	//	wattroff(edit_user_info_win, A_BOLD | A_REVERSE  | COLOR_PAIR(2));
-	//}
 	while ( (c = wgetch(edit_user_info_win)) != KEY_F(1) ) {
 		switch(c) {
-			case KEY_DOWN:
-				form_driver(edit_user_info_form, REQ_NEXT_FIELD);
-				form_driver(edit_user_info_form, REQ_END_LINE);
-				break;
 			case KEY_UP:
-				form_driver(edit_user_info_form, REQ_PREV_FIELD);
-				form_driver(edit_user_info_form, REQ_END_LINE);
+				menu_driver(edit_user_info_menu, REQ_UP_ITEM);
+				break;
+			case KEY_DOWN:
+				menu_driver(edit_user_info_menu, REQ_DOWN_ITEM);
 				break;
 				// VIM Keybindings
-			//case 10:	// RETURN, Select an item
-			//	//selected_item_str = item_name(current_item(edit_user_info_menu));
-			//	mvwprintw(stdscr, 2, 0, "Selected: %s", selected_item_str);
-			//	wrefresh(stdscr);
-			default:
-				form_driver(edit_user_info_form, c);
+			case 107:	
+				menu_driver(edit_user_info_menu, REQ_UP_ITEM);
 				break;
+			case 106:
+				menu_driver(edit_user_info_menu, REQ_DOWN_ITEM);
+				break;
+			case 10:	// RETURN, Select an item
+				selected_item_str = item_name(current_item(edit_user_info_menu));
+				mvwprintw(stdscr, 2, 0, "Selected: %s", selected_item_str);
+				wrefresh(stdscr);
+
+				if (strcmp(item_name(current_item(edit_user_info_menu)), edit_user_info_menu_options[0]) == 0)	// First name
+				{
+					char new_username[32];
+
+					wattron(edit_user_info_win, A_UNDERLINE | COLOR_PAIR(1));
+					mvwprintw(edit_user_info_win, 12, 6, "Write a new first name and press [ENTER] to save");
+					wattroff(edit_user_info_win, A_UNDERLINE | COLOR_PAIR(1));
+
+					echo();
+					curs_set(1);
+					mvwscanw(edit_user_info_win, 4, 25, "%s", new_username);
+
+					noecho();
+					curs_set(0);
+
+					sprintf(query, "UPDATE Person SET first_name = '%s' WHERE person_id = %d", new_username, user_id);
+					result = sqlite3_exec(db, query, callback_sign_in, 0, &error_msg);
+
+					clear_window(edit_user_info_win);
+					free_menu(edit_user_info_menu);
+					return;
+					/*
+					 *	1) mvwscan to position of first name
+					 *	2) take user input
+					 *	3) perform query
+					 *	4) upon success write everything to screen again and render
+					 *	5) upon fail write everything to screen again and render - provide w an error message
+					 */
+					break;
+				}
+				else if (strcmp(item_name(current_item(edit_user_info_menu)), edit_user_info_menu_options[1]) == 0)	// Last name
+				{
+					break;
+				}
+				if (strcmp(item_name(current_item(edit_user_info_menu)), edit_user_info_menu_options[2]) == 0)	// Age
+				{
+					break;
+				}
+				if (strcmp(item_name(current_item(edit_user_info_menu)), edit_user_info_menu_options[3]) == 0)	// Mail
+				{
+					break;
+				}
+				if (strcmp(item_name(current_item(edit_user_info_menu)), edit_user_info_menu_options[4]) == 0)	// Address
+				{
+					break;
+				}
+				if (strcmp(item_name(current_item(edit_user_info_menu)), edit_user_info_menu_options[5]) == 0)	// Phone number
+				{
+					break;
+				}
+				else if (strcmp(item_name(current_item(edit_user_info_menu)), edit_user_info_menu_options[6]) == 0)	// Exit
+				{
+					clear_window(edit_user_info_win);
+					free_menu(edit_user_info_menu);
+					return;
+					break;
+				}
 		}
 	}
 
@@ -1033,17 +1056,8 @@ static void admin_edit_user_info_win(int height, int width, int y_offset, int x_
 		die(edit_user_info_win);
 	}
 
-	unpost_form(edit_user_info_form);
-	free_form(edit_user_info_form);
-	free_field(edit_user_info_field[0]);
-	free_field(edit_user_info_field[1]);
-	free_field(edit_user_info_field[2]);
-	//free_field(edit_user_info_field[3]);
-	//free_field(edit_user_info_field[4]);
-	//free_field(edit_user_info_field[5]);
 	clear_window(edit_user_info_win);
-	noecho();
-	curs_set(0);
+	free_menu(edit_user_info_menu);
 }
 
 #endif
