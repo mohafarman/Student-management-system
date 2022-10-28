@@ -55,5 +55,4 @@ dkms.conf
 *.db
 test*
 *bak*
-sqlite3*
 *clangd

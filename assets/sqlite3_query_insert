@@ -1,0 +1,24 @@
+BEGIN;
+
+INSERT INTO Person (first_name, last_name, age, mail, address, phone_number)
+VALUES 
+	('Mohamad', 'Farman', 25, 'mohajao@mail.com', 'Focha 19', 07282812),
+	('Farman', 'Farfar', 22, 'farman@mail.com', 'Regementsg 85', 072121223),
+	('Sarah', 'Mista', 24, 'sricha@mail.com', 'Focha 19', 07282901),
+	('Sasha', 'Noob', 23, 'sashall@mail.com', 'Nomad', 0720903201),
+	('Awaz', 'Anon', 40, 'awaziii@mail.com', 'Hesenike', 0720992120);
+
+INSERT INTO Credentials (credentials_id, username, password, privilege)
+VALUES 
+	(1, 'admin', 'admin', 'admin'),
+	(2, 'farman', 1234, 'student'),
+	(3, 'sarah',1234, 'student'),
+	(4, 'sasha',1234, 'student'),
+	(5, 'awaz',1234, 'teacher');
+
+INSERT INTO Courses (course_code, course_name, course_teacher_id, description, spots_max, spots_available, finished, start_date, finish_date)
+VALUES
+	('abc123', 'ABC', 5, 'Learn the ABCs of english', 100, 100, 0, '2023-09-13', '2024-06-10'),
+	('mat045', 'Advanced Mathematics', 5, 'Calculus for geniuses', 20, 20, 0, '2026-09-13', '2024-06-10');
+
+END;

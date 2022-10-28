@@ -1,0 +1,50 @@
+CREATE TABLE IF NOT EXISTS Person(
+	person_id INTEGER PRIMARY KEY AUTOINCREMENT,
+	first_name VARCHAR(32) NOT NULL,
+	last_name VARCHAR(33) NOT NULL,
+	age INTEGER NOT NULL,
+	mail VARCHAR(55) NOT NULL,
+	address VARCHAR(55),
+	phone_number INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS Credentials (
+	credentials_id INTEGER,
+	username VARCHAR(32) NOT NULL,
+	password VARCHAR(32) NOT NULL,
+	privilege VARCHAR(10) NOT NULL,
+	FOREIGN KEY (credentials_id)
+		REFERENCES Person (person_id)
+		ON UPDATE CASCADE
+		ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS Courses (
+	course_id INTEGER PRIMARY KEY AUTOINCREMENT,
+	course_code VARCHAR(6) NOT NULL,
+	course_name VARCHAR(32) NOT NULL,
+	course_teacher_id INTEGER,
+	description VARCHAR(100) NOT NULL,
+	spots_max INTEGER NOT NULL,
+	spots_available INTEGER NOT NULL,
+	finished INTEGER NOT NULL,
+	start_date VARCHAR(20) NOT NULL,
+	finish_date VARCHAR(20) NOT NULL,
+	FOREIGN KEY (course_teacher_id)
+		REFERENCES Person (person_id)
+		ON UPDATE SET NULL
+		ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS Courses_Enrolled (
+	course_id_enrolled INTEGER NOT NULL,
+	student_id_enrolled INTEGER NOT NULL,
+	FOREIGN KEY (course_id_enrolled)
+		REFERENCES Courses (course_id)
+		ON UPDATE CASCADE
+		ON DELETE CASCADE
+	FOREIGN KEY (student_id_enrolled)
+		REFERENCES Courses (course_id)
+		ON UPDATE SET NULL
+		ON DELETE SET NULL
+);

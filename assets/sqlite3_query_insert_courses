@@ -1,0 +1,4 @@
+INSERT INTO Courses (course_code, course_name, course_teacher_id, description, spots_max, spots_available, finished, start_date, finish_date)
+VALUES
+	('abc123', 'ABC', 5, 'Learn the ABCs of english', 100, 100, 0, '2023-09-13', '2024-06-10'),
+	('mat045', 'Advanced Mathematics', 5, 'Calculus for geniuses', 20, 20, 0, '2026-09-13', '2024-06-10');
